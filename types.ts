@@ -6,7 +6,7 @@ export enum UserRole {
 }
 
 export interface EnergyProvider {
-  id: string;
+  id?: string;
   name: string;
   type: 'Solar' | 'Eólica' | 'Hídrica' | 'Biomassa' | 'Híbrida';
   region: string;
@@ -24,6 +24,12 @@ export interface EnergyProvider {
   capacity?: string | number;
   accessEmail?: string;
   accessPassword?: string;
+  // Novos campos solcitados (Jan 2026)
+  company?: string;
+  landline?: string;
+  city?: string;
+  website?: string;
+  annualRevenue?: number;
 }
 
 export interface Concessionaire {

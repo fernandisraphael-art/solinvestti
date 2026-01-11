@@ -7,6 +7,10 @@ import Logo from '../components/Logo';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
+import { parseBatchData } from '../lib/importHelper';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 declare global {
   interface Window {
@@ -18,9 +22,12 @@ interface AdminDashboardProps {
   generators: EnergyProvider[];
   onToggleStatus: (id: string, currentStatus: string) => void;
   onDeleteGenerator: (id: string) => void;
+  onUpdateGenerator: (id: string, updates: Partial<EnergyProvider>) => void;
   onAddGenerator: (gen: EnergyProvider) => void;
+  onBatchAddGenerators: (batch: EnergyProvider[]) => Promise<void>;
   clients: any[];
   onDeleteClient: (id: string) => void;
+  onUpdateClient: (id: string, updates: any) => void;
   concessionaires: Concessionaire[];
   onAddConcessionaire: (c: Concessionaire) => void;
   onUpdateConcessionaire: (id: string, data: Partial<Concessionaire>) => void;
@@ -31,9 +38,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   generators,
   onToggleStatus,
   onDeleteGenerator,
+  onUpdateGenerator,
   onAddGenerator,
+  onBatchAddGenerators,
   clients,
   onDeleteClient,
+  onUpdateClient,
   concessionaires,
   onAddConcessionaire,
   onUpdateConcessionaire,
@@ -41,6 +51,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 }) => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const manualUploadRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [showToast, setShowToast] = useState<{ show: boolean, msg: string, type?: 'info' | 'error' }>({ show: false, msg: '' });
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
@@ -48,6 +59,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [viewingDoc, setViewingDoc] = useState<string | null>(null);
 
   const [newCon, setNewCon] = useState({ name: '', responsible: '', contact: '', region: '' });
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
 
   const [isSearchingWeb, setIsSearchingWeb] = useState(false);
   const [searchRegion, setSearchRegion] = useState('');
@@ -267,6 +279,146 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
+  const downloadFile = (data: any, fileName: string) => {
+    try {
+      triggerToast(`Download iniciado: ${fileName}`, 'info');
+      // Blob as octet-stream forces the browser to treat it as a generic download
+      const blob = new Blob([data], { type: 'application/octet-stream' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+
+      // Persist link in DOM briefly for compatibility
+      link.style.position = 'fixed';
+      link.style.left = '-9999px';
+      document.body.appendChild(link);
+      link.click();
+
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        if (link.parentNode) link.parentNode.removeChild(link);
+      }, 10000);
+    } catch (e) {
+      console.error('Download error:', e);
+      triggerToast('Erro no download', 'error');
+    }
+  };
+
+  const handleExportExcel = () => {
+    try {
+      const dataToExport = generators.map(g => ({
+        'Usina': g.name,
+        'Empresa': g.company || '',
+        'Responsável': g.responsibleName || '',
+        'Telefone': g.responsiblePhone || g.landline || '',
+        'Email': g.accessEmail || '',
+        'Site': g.website || '',
+        'Cidade': g.city || '',
+        'Estado': g.region || '',
+        'Capacidade': g.capacity,
+        'Faturamento': g.annualRevenue ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(g.annualRevenue) : '---',
+        'Desconto (%)': g.discount,
+        'Comissão (%)': g.commission,
+        'Status': g.status === 'active' ? 'Ativa' : 'Pendente'
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(dataToExport);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Usinas");
+
+      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      downloadFile(wbout, "solinvestti_usinas.xlsx");
+    } catch (err) {
+      console.error('Excel Export Error:', err);
+      triggerToast('Erro ao exportar Excel', 'error');
+    }
+    setIsExportMenuOpen(false);
+  };
+
+  const handleExportPDF = () => {
+    try {
+      const doc = new jsPDF();
+      doc.text("Relatório de Usinas - Solinvestti", 14, 15);
+
+      const tableColumn = ["Usina", "Empresa", "Cidade", "Capacidade", "Status"];
+      const tableRows = generators.map(g => [
+        g.name,
+        g.company || '',
+        g.city || '',
+        g.capacity,
+        g.status === 'active' ? 'Ativa' : 'Pendente'
+      ]);
+
+      (doc as any).autoTable({
+        head: [tableColumn],
+        body: tableRows,
+        startY: 20,
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [16, 185, 129] }
+      });
+
+      const pdfData = doc.output('arraybuffer');
+      downloadFile(pdfData, "solinvestti_usinas.pdf");
+    } catch (err) {
+      console.error('PDF Export Error:', err);
+      triggerToast('Erro ao exportar PDF', 'error');
+    }
+    setIsExportMenuOpen(false);
+  };
+
+  const handleManualUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const fileExt = file.name.split('.').pop()?.toLowerCase();
+
+    if (fileExt === 'pdf') {
+      // Manual PDF Upload to Storage
+      try {
+        const fileName = `${Date.now()}_${file.name}`;
+        const { data, error } = await supabase.storage.from('public').upload(`documents/${fileName}`, file);
+        if (error) throw error;
+        triggerToast('PDF enviado para a nuvem com sucesso!');
+      } catch (error: any) {
+        triggerToast('Erro ao subir PDF: ' + error.message, 'error');
+      }
+    } else if (fileExt === 'xlsx' || fileExt === 'csv') {
+      // Excel/CSV Parsing
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const bstr = event.target?.result;
+          const wb = XLSX.read(bstr, { type: 'binary' });
+          const wsname = wb.SheetNames[0];
+          const ws = wb.Sheets[wsname];
+          const data = XLSX.utils.sheet_to_json(ws);
+
+          // Use the data already parsed from 'ws'
+          const jsonData = data;
+
+          if (jsonData.length === 0) {
+            triggerToast('Arquivo vazio ou inválido.', 'error');
+            return;
+          }
+
+          const batch = parseBatchData(jsonData);
+
+          await onBatchAddGenerators(batch);
+          triggerToast(`${batch.length} usinas importadas com sucesso!`);
+        } catch (error: any) {
+          triggerToast('Erro ao processar arquivo: ' + error.message, 'error');
+        }
+      };
+      reader.readAsBinaryString(file);
+    } else {
+      triggerToast('Formato não suportado. Use XLSX, CSV ou PDF.', 'error');
+    }
+
+    // Clear input
+    e.target.value = '';
+  };
+
   const activateCandidate = (candidate: any) => {
     onAddGenerator({
       ...candidate,
@@ -295,7 +447,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   const sidebarItems = [
-    { id: 'overview', label: 'Geral Overview', icon: 'grid_view' },
+    { id: 'overview', label: 'Visão Geral', icon: 'grid_view' },
     { id: 'suppliers', label: `Gestão Usinas`, icon: 'factory', count: generators.length },
     { id: 'concessionaires', label: `Distribuidoras`, icon: 'account_balance', count: concessionaires.length },
     { id: 'clients', label: `Base Clientes`, icon: 'groups', count: clients.length },
@@ -398,9 +550,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const handleVerifyAndReset = async () => {
     setResetError('');
-    const { data } = await supabase.from('admin_secrets').select('secret_value').eq('secret_key', 'admin_reset_password').single();
 
-    if (data && data.secret_value === adminPasswordInput) {
+    // Use RPC to check password securely (bypasses RLS)
+    const { data: isValid, error } = await supabase.rpc('verify_admin_password', {
+      password_input: adminPasswordInput
+    });
+
+    if (error) {
+      console.error('RPC Error:', error);
+      setResetError('Erro ao verificar senha.');
+      return;
+    }
+
+    if (isValid) {
       onReset();
       setIsResetModalOpen(false);
       triggerToast('Sistema resetado com sucesso.');
@@ -490,64 +652,119 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <h3 className="text-2xl font-display font-black text-white mb-1 uppercase tracking-tight">Rede de Parceiros Geradores</h3>
                   <p className="text-white/40 text-sm">Gestão comercial e homologação de ativos de geração distribuída.</p>
                 </div>
-                <button onClick={() => setActiveTab('suppliers_prospect')} className="px-8 py-4 bg-primary text-brand-navy rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-[0_0_30px_rgba(16,185,129,0.3)] hover:scale-105 transition-all">
-                  <span className="material-symbols-outlined text-sm mr-2">travel_explore</span> Prospecção IA
-                </button>
+                <div className="flex items-center gap-4">
+                  <button onClick={() => setActiveTab('suppliers_prospect')} className="px-6 py-3 bg-primary text-brand-navy rounded-xl font-black text-[10px] uppercase tracking-widest shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:scale-105 transition-all">
+                    <span className="material-symbols-outlined text-sm mr-2">travel_explore</span> Prospecção IA
+                  </button>
+
+                  {/* Export Button */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+                      className="px-6 py-3 bg-brand-navy border border-white/10 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-white/5 transition-all flex items-center gap-2"
+                    >
+                      <span className="material-symbols-outlined text-sm">download</span> Exportar
+                    </button>
+
+                    {isExportMenuOpen && (
+                      <div className="absolute top-full right-0 mt-2 bg-[#0F172A] border border-white/10 rounded-xl p-2 flex flex-col w-40 shadow-2xl z-50">
+                        <button onClick={handleExportExcel} className="flex items-center gap-2 px-4 py-3 hover:bg-white/5 rounded-lg text-left text-xs font-bold text-white transition-colors">
+                          <span className="material-symbols-outlined text-green-500 text-sm">table_view</span> Excel (.xlsx)
+                        </button>
+                        <button onClick={handleExportPDF} className="flex items-center gap-2 px-4 py-3 hover:bg-white/5 rounded-lg text-left text-xs font-bold text-white transition-colors">
+                          <span className="material-symbols-outlined text-red-500 text-sm">picture_as_pdf</span> PDF
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <input
+                    type="file"
+                    ref={manualUploadRef}
+                    onChange={handleManualUpload}
+                    accept=".xlsx,.csv,.pdf"
+                    className="hidden"
+                  />
+                  <button
+                    onClick={() => manualUploadRef.current?.click()}
+                    className="px-6 py-3 bg-white/5 border border-white/10 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-sm">upload_file</span> Importar Planilha
+                  </button>
+                </div>
               </div>
 
               <div className="bg-brand-navy/60 border border-white/10 rounded-[3rem] overflow-hidden overflow-x-auto shadow-2xl">
                 <table className="w-full text-left">
                   <thead className="bg-white/5 border-b border-white/10">
                     <tr>
-                      <th className="px-10 py-6 text-[10px] font-black uppercase text-white/50 tracking-[0.2em]">Usina / Local</th>
-                      <th className="px-10 py-6 text-[10px] font-black uppercase text-white/50 tracking-[0.2em]">Responsável / Contato</th>
-                      <th className="px-10 py-6 text-[10px] font-black uppercase text-white/50 tracking-[0.2em]">Capacidade</th>
-                      <th className="px-10 py-6 text-[10px] font-black uppercase text-white/50 tracking-[0.2em]">Desc.</th>
-                      <th className="px-10 py-6 text-[10px] font-black uppercase text-white/50 tracking-[0.2em]">Comm.</th>
-                      <th className="px-10 py-6 text-[10px] font-black uppercase text-white/50 tracking-[0.2em]">Status</th>
-                      <th className="px-10 py-6 text-[10px] font-black uppercase text-white/50 tracking-[0.2em]">Ações</th>
+                      <th className="px-2 py-4 text-[9px] font-black uppercase text-white/50 tracking-[0.2em]">Usina / Empresa</th>
+                      <th className="px-2 py-4 text-[9px] font-black uppercase text-white/50 tracking-[0.2em]">Contato</th>
+                      <th className="px-2 py-4 text-[9px] font-black uppercase text-white/50 tracking-[0.2em]">Local</th>
+                      <th className="px-2 py-4 text-[9px] font-black uppercase text-white/50 tracking-[0.2em]">Email / Site</th>
+                      <th className="px-2 py-4 text-[9px] font-black uppercase text-white/50 tracking-[0.2em]">Capacidade</th>
+                      <th className="px-2 py-4 text-[9px] font-black uppercase text-white/50 tracking-[0.2em]">Comercial</th>
+                      <th className="px-2 py-4 text-[9px] font-black uppercase text-white/50 tracking-[0.2em]">Status</th>
+                      <th className="px-2 py-4 text-[9px] font-black uppercase text-white/50 tracking-[0.2em] text-right">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
                     {generators.map(gen => (
                       <tr key={gen.id} className="hover:bg-white/10 transition-colors">
-                        <td className="px-10 py-8">
-                          <div className="flex items-center gap-4">
-                            <div className={`size-11 rounded-xl bg-gradient-to-br ${gen.color || 'from-emerald-400 to-teal-700'} flex items-center justify-center font-black text-white text-base shadow-lg`}>
+                        <td className="px-4 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`size-10 rounded-lg bg-gradient-to-br ${gen.color || 'from-emerald-400 to-teal-700'} flex items-center justify-center font-black text-white text-sm shadow-lg`}>
                               {gen.name[0]}
                             </div>
                             <div>
-                              <p className="font-black text-sm text-white">{gen.name}</p>
-                              <p className="text-[10px] text-primary font-black uppercase tracking-widest">{gen.region || 'N/A'}</p>
+                              <p className="font-bold text-sm text-white truncate max-w-[140px]">{gen.name}</p>
+                              <p className="text-[10px] text-primary font-black uppercase tracking-widest truncate max-w-[140px]">{gen.company || '---'}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="px-10 py-8">
-                          <p className="text-xs font-bold text-white">{gen.responsibleName || '---'}</p>
-                          <p className="text-[10px] text-white/40 font-black mt-1">{gen.responsiblePhone || '---'}</p>
+                        <td className="px-2 py-3">
+                          <p className="text-xs font-bold text-white truncate max-w-[140px]">{gen.responsibleName || '---'}</p>
+                          <div className="flex flex-col mt-1">
+                            <span className="text-[10px] text-emerald-400 font-black tracking-widest uppercase truncate max-w-[120px]">{gen.responsiblePhone || gen.landline || '---'}</span>
+                          </div>
                         </td>
-                        <td className="px-10 py-8 font-display font-black text-white text-lg">{gen.capacity} MW</td>
-                        <td className="px-10 py-8 font-display font-black text-primary text-xl">{gen.discount || 0}%</td>
-                        <td className="px-10 py-8 font-display font-bold text-white/70">{gen.commission || 0}%</td>
-                        <td className="px-10 py-8">
-                          <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase ${gen.status === 'active' ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/20' : 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/20'}`}>
+                        <td className="px-2 py-3">
+                          <p className="text-xs font-bold text-white">{gen.city || '---'}</p>
+                          <p className="text-[10px] text-white/50 font-black uppercase tracking-widest">{gen.region || 'BR'}</p>
+                        </td>
+                        <td className="px-2 py-3">
+                          <p className="text-[10px] text-white/70 font-medium truncate max-w-[140px]" title={gen.accessEmail}>{gen.accessEmail || '---'}</p>
+                          {gen.website && (
+                            <a href={gen.website} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline truncate max-w-[140px] block">
+                              {gen.website.replace(/^https?:\/\//, '')}
+                            </a>
+                          )}
+                        </td>
+                        <td className="px-2 py-3 font-display font-black text-white text-sm">{gen.capacity}</td>
+                        <td className="px-2 py-3">
+                          <div className="flex flex-col">
+                            <span className="text-emerald-400 font-bold text-xs">{gen.discount || 0}% Desc.</span>
+                            <span className="text-blue-400 font-bold text-[10px]">{gen.commission || 0}% Comm.</span>
+                          </div>
+                        </td>
+                        <td className="px-2 py-3">
+                          <span className={`px-2 py-1 rounded-full text-[9px] font-black uppercase ${gen.status === 'active' ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/20' : 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/20'}`}>
                             {gen.status === 'active' ? 'Ativa' : 'Pendente'}
                           </span>
                         </td>
-                        <td className="px-10 py-8">
-                          <div className="flex items-center gap-4">
+                        <td className="px-2 py-3 text-right">
+                          <div className="flex items-center justify-end gap-2">
                             <button
                               onClick={() => onToggleStatus(gen.id, gen.status || 'pending')}
                               className={`font-black text-[10px] uppercase tracking-widest hover:underline flex items-center gap-1 ${gen.status === 'active' ? 'text-red-400' : 'text-emerald-400'
                                 }`}
                             >
-                              <span className="material-symbols-outlined text-sm">
+                              <span className="material-symbols-outlined text-[18px]">
                                 {gen.status === 'active' ? 'block' : 'check_circle'}
                               </span>
-                              {gen.status === 'active' ? 'Desativar' : 'Ativar'}
                             </button>
                             <button onClick={() => setEditingGenerator(gen)} className="text-white/30 hover:text-white transition-colors" title="Editar">
-                              <span className="material-symbols-outlined text-[20px]">edit</span>
+                              <span className="material-symbols-outlined text-[18px]">edit</span>
                             </button>
                             <button
                               onClick={() => {
@@ -558,7 +775,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               className="text-white/30 hover:text-red-500 transition-colors"
                               title="Excluir"
                             >
-                              <span className="material-symbols-outlined text-[20px]">delete</span>
+                              <span className="material-symbols-outlined text-[18px]">delete</span>
                             </button>
                           </div>
                         </td>
@@ -651,7 +868,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       </tr>
                     ) : (
                       clients.map((client) => (
-                        <tr key={client.id} className="hover:bg-white/5 transition-colors">
+                        <tr
+                          key={client.id}
+                          className="hover:bg-white/5 transition-colors cursor-help"
+                          onClick={() => {
+                            console.log('DEBUG: TR CLICADA para cliente:', client.name);
+                            alert(`DEBUG: Você clicou NA LINHA do cliente ${client.name}. O botão de excluir está funcionando?`);
+                          }}
+                        >
                           <td className="px-10 py-8">
                             <p className="font-black text-sm text-white">{client.name}</p>
                             <p className="text-[10px] text-white/40">{client.email}</p>
@@ -682,12 +906,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                 <span className="material-symbols-outlined text-[20px]">edit</span>
                               </button>
                               <button
-                                onClick={() => {
-                                  if (window.confirm('Tem certeza que deseja excluir este cliente?')) {
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  console.log('DEBUG: Botão excluir clicado para cliente:', client.id, client.name);
+                                  alert(`DEBUG: Click capturado para ${client.name}. ID: ${client.id}`);
+                                  if (window.confirm(`Tem certeza que deseja excluir o cliente "${client.name}"?`)) {
+                                    console.log('DEBUG: Confirmação aceita. Chamando onDeleteClient...');
                                     onDeleteClient(client.id);
                                   }
                                 }}
-                                className="text-white/30 hover:text-red-500 transition-colors"
+                                className="text-white/30 hover:text-red-500 transition-colors relative z-10"
+                                style={{ pointerEvents: 'auto', cursor: 'pointer' }}
                                 title="Excluir"
                               >
                                 <span className="material-symbols-outlined text-[20px]">delete</span>
@@ -962,11 +1191,51 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-brand-deep/90 backdrop-blur-xl">
           <div className="w-full max-w-[600px] bg-brand-navy rounded-[3.5rem] border border-white/20 shadow-2xl p-14 animate-in zoom-in-95">
             <h3 className="text-3xl font-display font-black text-white mb-10">Editar Usina Parceira</h3>
-            <form onSubmit={(e) => { e.preventDefault(); setEditingGenerator(null); triggerToast('Informações salvas.'); }} className="space-y-8">
-              <div>
-                <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Razão Social</label>
-                <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none focus:ring-4 ring-primary/20" value={editingGenerator.name} onChange={e => setEditingGenerator({ ...editingGenerator, name: e.target.value })} />
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (editingGenerator.id) {
+                await onUpdateGenerator(editingGenerator.id, editingGenerator);
+                triggerToast('Informações salvas com sucesso.');
+              }
+              setEditingGenerator(null);
+            }} className="space-y-8">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Razão Social / Usina</label>
+                  <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none focus:ring-4 ring-primary/20" value={editingGenerator.name} onChange={e => setEditingGenerator({ ...editingGenerator, name: e.target.value })} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Empresa Operadora</label>
+                  <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none focus:ring-4 ring-primary/20" value={editingGenerator.company || ''} onChange={e => setEditingGenerator({ ...editingGenerator, company: e.target.value })} />
+                </div>
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Nome do Responsável</label>
+                  <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingGenerator.responsibleName || ''} onChange={e => setEditingGenerator({ ...editingGenerator, responsibleName: e.target.value })} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Contato do Responsável</label>
+                  <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingGenerator.responsiblePhone || ''} onChange={e => setEditingGenerator({ ...editingGenerator, responsiblePhone: e.target.value })} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Cidade</label>
+                  <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingGenerator.city || ''} onChange={e => setEditingGenerator({ ...editingGenerator, city: e.target.value })} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Estado / UF</label>
+                  <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingGenerator.region || ''} onChange={e => setEditingGenerator({ ...editingGenerator, region: e.target.value })} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Capacidade (kW/MW)</label>
+                  <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingGenerator.capacity || ''} onChange={e => setEditingGenerator({ ...editingGenerator, capacity: e.target.value })} />
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Desconto (%)</label>
@@ -977,11 +1246,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <input type="number" className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingGenerator.commission} onChange={e => setEditingGenerator({ ...editingGenerator, commission: parseInt(e.target.value) || 0 })} />
                 </div>
               </div>
-              <div>
-                <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Contato do Responsável</label>
-                <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingGenerator.responsiblePhone} onChange={e => setEditingGenerator({ ...editingGenerator, responsiblePhone: e.target.value })} placeholder="Telefone" />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Website / Landing Page</label>
+                  <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingGenerator.website || ''} onChange={e => setEditingGenerator({ ...editingGenerator, website: e.target.value })} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Faturamento Anual (R$)</label>
+                  <input type="number" className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingGenerator.annualRevenue || 0} onChange={e => setEditingGenerator({ ...editingGenerator, annualRevenue: parseFloat(e.target.value) || 0 })} />
+                </div>
               </div>
 
+              <div className="mt-auto pt-10 border-t border-white/5">
+                <div className="p-6 bg-gradient-to-br from-primary/10 to-transparent rounded-3xl border border-white/5">
+                  <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-2">Solinvestti Admin</p>
+                  <p className="text-[9px] text-white/40 leading-relaxed font-bold">Versão 2.0.4 - Alpha<br />Debug Deletion Active</p>
+                </div>
+              </div>
 
               <div className="pt-4 border-t border-white/10">
                 <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4">Credenciais de Acesso</h4>
@@ -1030,19 +1312,42 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-brand-deep/90 backdrop-blur-xl">
           <div className="w-full max-w-[600px] bg-brand-navy rounded-[3.5rem] border border-white/20 shadow-2xl p-14 animate-in zoom-in-95">
             <h3 className="text-3xl font-display font-black text-white mb-10">Dados do Cliente</h3>
-            <div className="space-y-8">
-              <div>
-                <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Nome Completo</label>
-                <div className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold">{editingClient.name}</div>
-              </div>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              onUpdateClient(editingClient.id, editingClient);
+              triggerToast('Dados do cliente atualizados!');
+              setEditingClient(null);
+            }} className="space-y-8">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Cidade/Estado</label>
-                  <div className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold">{editingClient.city}/{editingClient.state}</div>
+                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Nome Completo</label>
+                  <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingClient.name} onChange={e => setEditingClient({ ...editingClient, name: e.target.value })} />
                 </div>
                 <div>
-                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Valor Fatura</label>
-                  <div className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold">R$ {editingClient.billValue}</div>
+                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">E-mail de Contato</label>
+                  <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingClient.email || ''} onChange={e => setEditingClient({ ...editingClient, email: e.target.value })} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Telefone</label>
+                  <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingClient.phone || ''} onChange={e => setEditingClient({ ...editingClient, phone: e.target.value })} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Valor da Fatura (R$)</label>
+                  <input type="number" className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingClient.billValue || 0} onChange={e => setEditingClient({ ...editingClient, billValue: Number(e.target.value) })} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Cidade</label>
+                  <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingClient.city || ''} onChange={e => setEditingClient({ ...editingClient, city: e.target.value })} />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Estado</label>
+                  <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingClient.state || ''} onChange={e => setEditingClient({ ...editingClient, state: e.target.value })} />
                 </div>
               </div>
 
@@ -1050,20 +1355,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4">Credenciais de Acesso</h4>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">E-mail</label>
-                    <div className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white font-bold text-sm truncate" title={editingClient.accessEmail}>
-                      {editingClient.accessEmail || editingClient.email || 'Não registrado'}
-                    </div>
+                    <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Login (E-mail)</label>
+                    <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white font-bold text-sm" value={editingClient.accessEmail || ''} onChange={e => setEditingClient({ ...editingClient, accessEmail: e.target.value })} />
                   </div>
                   <div>
                     <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Senha</label>
                     <div className="relative">
                       <input
                         type={showPassword ? "text" : "password"}
-                        readOnly
                         value={editingClient.accessPassword || ''}
-                        placeholder={editingClient.accessPassword ? '' : '(Não salva)'}
                         className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white font-bold text-sm font-mono outline-none pr-12"
+                        onChange={e => setEditingClient({ ...editingClient, accessPassword: e.target.value })}
                       />
                       <button
                         type="button"
@@ -1080,9 +1382,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
 
               <div className="flex gap-6 pt-6">
-                <button type="button" onClick={() => setEditingClient(null)} className="flex-1 py-5 text-white/40 font-black uppercase tracking-widest hover:text-white">Fechar</button>
+                <button type="submit" className="flex-2 px-10 py-5 bg-primary text-brand-navy rounded-2xl font-black uppercase tracking-widest shadow-2xl hover:scale-105 transition-all">Salvar Alterações</button>
+                <button type="button" onClick={() => setEditingClient(null)} className="flex-1 py-5 text-white/40 font-black uppercase tracking-widest hover:text-white">Cancelar</button>
               </div>
-            </div>
+            </form>
           </div>
         </div>
       )}
@@ -1138,32 +1441,28 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       )}
 
-      {
-        showToast.show && (
-          <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[300] bg-primary text-brand-navy px-10 py-6 rounded-3xl font-black animate-in fade-in slide-in-from-bottom-6 flex items-center gap-3 shadow-2xl">
-            <span className="material-symbols-outlined">check_circle</span>
-            {showToast.msg}
-          </div>
-        )
-      }
+      {showToast.show && (
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[300] bg-primary text-brand-navy px-10 py-6 rounded-3xl font-black animate-in fade-in slide-in-from-bottom-6 flex items-center gap-3 shadow-2xl">
+          <span className="material-symbols-outlined">check_circle</span>
+          {showToast.msg}
+        </div>
+      )}
 
       {/* MODAL: VISUALIZAR DOCUMENTO (Caso nova aba falhe) */}
-      {
-        viewingDoc && (
-          <div className="fixed inset-0 z-[400] bg-black/90 backdrop-blur-xl flex flex-col">
-            <header className="p-6 flex justify-between items-center bg-brand-navy/60 border-b border-white/10">
-              <h3 className="font-display font-black text-xl">Pré-visualização de Documento</h3>
-              <button onClick={() => setViewingDoc(null)} className="size-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all">
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </header>
-            <div className="flex-1 p-10 flex justify-center overflow-auto">
-              <img src={viewingDoc} alt="Fatura" className="max-w-full h-auto rounded-xl shadow-2xl" />
-            </div>
+      {viewingDoc && (
+        <div className="fixed inset-0 z-[400] bg-black/90 backdrop-blur-xl flex flex-col">
+          <header className="p-6 flex justify-between items-center bg-brand-navy/60 border-b border-white/10">
+            <h3 className="font-display font-black text-xl">Pré-visualização de Documento</h3>
+            <button onClick={() => setViewingDoc(null)} className="size-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all">
+              <span className="material-symbols-outlined">close</span>
+            </button>
+          </header>
+          <div className="flex-1 p-10 flex justify-center overflow-auto">
+            <img src={viewingDoc} alt="Fatura" className="max-w-full h-auto rounded-xl shadow-2xl" />
           </div>
-        )
-      }
-    </div >
+        </div>
+      )}
+    </div>
   );
 };
 

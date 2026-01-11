@@ -47,7 +47,25 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, fixedRole }) => {
           password: formData.password,
         });
 
-        if (authError) throw authError;
+        if (authError) {
+          // Fallback: Check 'generators' table for migrated/imported users
+          console.log('Supabase auth failed, checking legacy tables...');
+          const { data: genUser, error: genError } = await supabase
+            .from('generators')
+            .select('*')
+            .eq('access_email', formData.email)
+            .eq('access_password', formData.password)
+            .maybeSingle();
+
+          if (genUser) {
+            console.log('Found user in generators table:', genUser.name);
+            onLogin(UserRole.GENERATOR, genUser.name);
+            redirectUser(UserRole.GENERATOR);
+            return;
+          }
+
+          throw authError;
+        }
 
         // Fetch user profile to get the role
         const { data: profile, error: profileError } = await supabase

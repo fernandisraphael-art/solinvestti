@@ -8,12 +8,14 @@ import { LOGO_URL } from '../constants/assets';
 
 interface ConsumerDashboardProps {
   userData: any;
+  onUpdateProfile: (updates: { name?: string, phone?: string, avatar?: string }) => Promise<void>;
 }
 
-const ConsumerDashboard: React.FC<ConsumerDashboardProps> = ({ userData }) => {
+const ConsumerDashboard: React.FC<ConsumerDashboardProps> = ({ userData, onUpdateProfile }) => {
   const navigate = useNavigate();
   const [showAdminArea, setShowAdminArea] = useState(false);
-  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [profileImage, setProfileImage] = useState<string | null>(userData.profileImage || null);
+  const [isSaving, setIsSaving] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -129,12 +131,66 @@ const ConsumerDashboard: React.FC<ConsumerDashboardProps> = ({ userData }) => {
     }
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const compressImage = (base64: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.src = base64;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 400;
+        const MAX_HEIGHT = 400;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.7));
+      };
+    });
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => setProfileImage(reader.result as string);
+      reader.onloadend = async () => {
+        const base64 = reader.result as string;
+        const compressed = await compressImage(base64);
+        setProfileImage(compressed);
+      };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    setIsSaving(true);
+    try {
+      await onUpdateProfile({
+        name: editData.name,
+        phone: editData.phone,
+        avatar: profileImage || undefined
+      });
+      setShowAdminArea(false);
+      alert('Dados salvos com sucesso!');
+    } catch (error) {
+      console.error('Erro ao salvar:', error);
+      alert('Erro ao salvar alterações.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -213,8 +269,12 @@ const ConsumerDashboard: React.FC<ConsumerDashboardProps> = ({ userData }) => {
             </div>
 
             <footer className="p-8 bg-slate-50 border-t border-slate-100 flex gap-4">
-              <button onClick={() => setShowAdminArea(false)} className="flex-1 btn-startpro text-white py-5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl">
-                Salvar Alterações
+              <button
+                onClick={handleSaveProfile}
+                className="flex-1 btn-startpro text-white py-5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl disabled:opacity-50"
+                disabled={isSaving}
+              >
+                {isSaving ? 'Salvando...' : 'Salvar Alterações'}
               </button>
             </footer>
           </div>

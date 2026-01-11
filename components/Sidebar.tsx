@@ -72,6 +72,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <span className="material-symbols-outlined text-[20px]">logout</span> Sair
                 </button>
                 {footerContent}
+                <div className="mt-4 pt-4 border-t border-white/5 opacity-40">
+                    <p className="text-[8px] font-black uppercase tracking-widest text-primary">Solinvestti v2.0.4-DEBUG</p>
+                    <p className="text-[7px] font-bold text-white/50">Exclusão Diagnóstico Ativo</p>
+                </div>
             </div>
         </aside>
     );

@@ -59,7 +59,8 @@ const App: React.FC = () => {
     investmentPartner: null as any,
     investmentSimulation: null as any,
     isAlreadyRegistered: false,
-    energyBillFile: null as string | null
+    energyBillFile: null as string | null,
+    profileImage: null as string | null
   });
 
   useEffect(() => {
@@ -86,12 +87,13 @@ const App: React.FC = () => {
   const fetchProfile = async (userId: string) => {
     const { data, error } = await supabase
       .from('profiles')
-      .select('role, name')
+      .select('role, name, avatar_url')
       .eq('id', userId)
       .single();
 
     if (data && !error) {
       setUser({ role: data.role as UserRole, name: data.name || 'Usuário' });
+      setUserData(prev => ({ ...prev, name: data.name || prev.name, profileImage: data.avatar_url || prev.profileImage }));
       fetchEntities(data.role as UserRole, userId);
     } else {
       setIsLoading(false);
@@ -115,7 +117,13 @@ const App: React.FC = () => {
           color: 'from-emerald-600 to-teal-500',
           logoUrl: g.logo_url || null,
           accessEmail: g.access_email,
-          accessPassword: g.access_password
+          accessPassword: g.access_password,
+          // Map new fields
+          annualRevenue: Number(g.annual_revenue),
+          company: g.company,
+          landline: g.landline,
+          city: g.city,
+          website: g.website
         })));
 
         // If user is a generator, find their specific data
@@ -139,12 +147,17 @@ const App: React.FC = () => {
             });
           }
         }
+      } else {
+        // DB is empty, clear local state
+        setGenerators([]);
       }
 
       // 2. Fetch Concessionaires
       const { data: concData } = await supabase.from('concessionaires').select('*');
       if (concData && concData.length > 0) {
         setConcessionaires(concData);
+      } else {
+        setConcessionaires([]);
       }
 
       // 3. Fetch Clients (Simplified for now)
@@ -169,21 +182,9 @@ const App: React.FC = () => {
   const [globalClients, setGlobalClients] = useState<any[]>([]);
   const [globalNegotiations, setGlobalNegotiations] = useState<any[]>([]);
 
-  const [concessionaires, setConcessionaires] = useState<Concessionaire[]>([
-    { id: '1', name: 'CPFL Paulista', responsible: 'Ricardo Mendes', contact: '(19) 98888-7777', status: 'active', region: 'SP' },
-    { id: '2', name: 'CEMIG Distribuição', responsible: 'Ana Paula Souto', contact: '(31) 99999-0000', status: 'active', region: 'MG' },
-    { id: '3', name: 'Enel Rio', responsible: 'Marcos Vinicius', contact: '(21) 97777-6666', status: 'active', region: 'RJ' }
-  ]);
+  const [concessionaires, setConcessionaires] = useState<Concessionaire[]>([]);
 
-  const [generators, setGenerators] = useState<EnergyProvider[]>(
-    ENERGY_PROVIDERS.map(p => ({
-      ...p,
-      status: 'active',
-      responsibleName: 'Admin Solinvestti',
-      responsiblePhone: '(11) 99999-9999',
-      capacity: '150'
-    }))
-  );
+  const [generators, setGenerators] = useState<EnergyProvider[]>([]);
 
   const [currentGeneratorData, setCurrentGeneratorData] = useState({
     contactName: '',
@@ -204,23 +205,15 @@ const App: React.FC = () => {
   const resetSystem = async () => {
     try {
       await supabase.rpc('reset_database');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao resetar banco de dados:', error);
+      alert('Erro ao resetar sistema: ' + error.message);
     }
 
     setGlobalClients([]);
     setGlobalNegotiations([]);
-    setGenerators(ENERGY_PROVIDERS.map(p => ({
-      ...p,
-      status: 'active',
-      responsibleName: 'Admin Solinvestti',
-      responsiblePhone: '(11) 99999-9999',
-      capacity: '150'
-    })));
-    setConcessionaires([
-      { id: '1', name: 'CPFL Paulista', responsible: 'Ricardo Mendes', contact: '(19) 98888-7777', status: 'active', region: 'SP' },
-      { id: '2', name: 'CEMIG Distribuição', responsible: 'Ana Paula Souto', contact: '(31) 99999-0000', status: 'active', region: 'MG' }
-    ]);
+    setGenerators([]);
+    setConcessionaires([]);
     setUserData({
       name: '',
       email: '',
@@ -393,15 +386,104 @@ const App: React.FC = () => {
     }
   };
 
+  const updateGenerator = async (id: string, updates: Partial<EnergyProvider>) => {
+    const dbUpdates: any = {};
+    if (updates.name !== undefined) dbUpdates.name = updates.name;
+    if (updates.responsibleName !== undefined) dbUpdates.responsible_name = updates.responsibleName;
+    if (updates.responsiblePhone !== undefined) dbUpdates.responsible_phone = updates.responsiblePhone;
+    if (updates.discount !== undefined) dbUpdates.discount = updates.discount;
+    if (updates.commission !== undefined) dbUpdates.commission = updates.commission;
+    if (updates.capacity !== undefined) dbUpdates.capacity = updates.capacity;
+    if (updates.company !== undefined) dbUpdates.company = updates.company;
+    if (updates.landline !== undefined) dbUpdates.landline = updates.landline;
+    if (updates.city !== undefined) dbUpdates.city = updates.city;
+    if (updates.website !== undefined) dbUpdates.website = updates.website;
+    if (updates.annualRevenue !== undefined) dbUpdates.annual_revenue = updates.annualRevenue;
+    if (updates.region !== undefined) dbUpdates.region = updates.region;
+
+    const { error } = await supabase.from('generators').update(dbUpdates).eq('id', id);
+    if (!error) {
+      const { data: newUser } = await supabase.auth.getUser();
+      if (newUser.user) fetchEntities(user?.role || UserRole.ADMIN, newUser.user.id);
+    } else {
+      console.error('Error updating generator:', error);
+    }
+  };
+
   const deleteClient = async (id: string) => {
+    console.log('Iniciando deleteClient no App.tsx para ID:', id);
+    alert('DEBUG: App.tsx recebeu ordem de excluir ID: ' + id);
     const { error } = await supabase.from('clients').delete().eq('id', id);
     if (!error) {
-      setGlobalClients(prev => prev.filter(c => c.id !== id));
+      console.log('Deleção no Supabase concluída com sucesso');
+      alert('DEBUG: Supabase retornou SUCESSO na exclusão!');
+      setGlobalClients(prev => {
+        const filtered = prev.filter(c => c.id !== id);
+        return filtered;
+      });
+    } else {
+      console.error('Erro ao excluir cliente no Supabase:', error);
+      alert('ERRO SUPABASE: ' + error.message);
+    }
+  };
+
+  const updateClient = async (id: string, updates: any) => {
+    const dbUpdates: any = {};
+    if (updates.name !== undefined) dbUpdates.name = updates.name;
+    if (updates.email !== undefined) dbUpdates.email = updates.email;
+    if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
+    if (updates.state !== undefined) dbUpdates.state = updates.state;
+    if (updates.city !== undefined) dbUpdates.city = updates.city;
+    if (updates.billValue !== undefined) dbUpdates.bill_value = Number(updates.billValue);
+    if (updates.status !== undefined) dbUpdates.status = updates.status;
+    if (updates.accessEmail !== undefined) dbUpdates.access_email = updates.accessEmail;
+    if (updates.accessPassword !== undefined) dbUpdates.access_password = updates.accessPassword;
+
+    const { error } = await supabase.from('clients').update(dbUpdates).eq('id', id);
+    if (!error) {
+      const { data: newUser } = await supabase.auth.getUser();
+      fetchEntities(user?.role || UserRole.ADMIN, newUser.user?.id || 'admin-bypass');
+    } else {
+      console.error('Error updating client:', error);
+    }
+  };
+
+  const handleUpdateProfile = async (updates: { name?: string, phone?: string, avatar?: string }) => {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) return;
+
+    // 1. Update Profiles table
+    const profileUpdates: any = {};
+    if (updates.name) profileUpdates.name = updates.name;
+    if (updates.avatar) profileUpdates.avatar_url = updates.avatar;
+
+    await supabase.from('profiles').update(profileUpdates).eq('id', authUser.id);
+
+    // 2. Update Clients table if user_id matches
+    const clientUpdates: any = {};
+    if (updates.name) clientUpdates.name = updates.name;
+    if (updates.phone) clientUpdates.phone = updates.phone;
+
+    await supabase.from('clients').update(clientUpdates).eq('user_id', authUser.id);
+
+    // 3. Refresh State
+    setUserData(prev => ({
+      ...prev,
+      name: updates.name || prev.name,
+      phone: updates.phone || prev.phone,
+      profileImage: updates.avatar || prev.profileImage
+    }));
+
+    // Also update Auth state name if needed
+    if (updates.name) {
+      setUser(prev => prev ? { ...prev, name: updates.name! } : null);
     }
   };
 
   const handleLogin = (role: UserRole, name: string) => {
     setUser({ role, name });
+    // Force fetch to ensure UI reflects DB state (even for empty DB)
+    fetchEntities(role, 'admin-bypass');
     if (role === UserRole.CONSUMER) {
       updateUserData({ isAlreadyRegistered: true });
     }
@@ -422,7 +504,7 @@ const App: React.FC = () => {
           <Route path="/investments" element={<InvestmentPartners userData={userData} onSelect={updateUserData} />} />
           <Route path="/investment-simulation" element={<InvestmentSimulation userData={userData} onComplete={updateUserData} />} />
           <Route path="/finalize" element={<RegistrationFinalize userData={userData} onConfirm={(password) => registerNewClient(userData, password)} onFileSelect={(file) => updateUserData({ energyBillFile: file })} />} />
-          <Route path="/consumer-dashboard" element={<ProtectedRoute user={user} isLoading={isLoading} allowedRole={UserRole.CONSUMER}><ConsumerDashboard userData={userData} /></ProtectedRoute>} />
+          <Route path="/consumer-dashboard" element={<ProtectedRoute user={user} isLoading={isLoading} allowedRole={UserRole.CONSUMER}><ConsumerDashboard userData={userData} onUpdateProfile={handleUpdateProfile} /></ProtectedRoute>} />
 
           <Route path="/generator/*" element={
             <ProtectedRoute user={user} isLoading={isLoading} allowedRole={UserRole.GENERATOR}>
@@ -440,9 +522,67 @@ const App: React.FC = () => {
                 generators={generators}
                 onToggleStatus={toggleGeneratorStatus}
                 onDeleteGenerator={deleteGenerator}
+                onUpdateGenerator={updateGenerator}
                 onAddGenerator={handleAddGenerator}
+                onBatchAddGenerators={async (batch) => {
+                  const session = await supabase.auth.getSession();
+                  const uid = session.data.session?.user.id;
+
+                  // Add user_id to each generator in the batch
+                  const payload = batch.map(gen => ({
+                    user_id: uid, // Important for RLS
+                    name: gen.name,
+                    type: gen.type,
+                    region: gen.region,
+                    discount: gen.discount,
+                    status: gen.status,
+                    capacity: gen.capacity,
+                    responsible_name: gen.responsibleName,
+                    responsible_phone: gen.responsiblePhone,
+                    commission: gen.commission,
+                    access_email: gen.accessEmail,
+                    access_password: gen.accessPassword,
+                    company: gen.company,
+                    landline: gen.landline,
+                    city: gen.city,
+                    website: gen.website,
+                    annual_revenue: gen.annualRevenue
+                  }));
+
+                  // Use RPC to bypass RLS for this specific operation
+                  const { error } = await supabase.rpc('batch_insert_generators', { payload });
+
+                  if (!error) {
+                    if (uid) {
+                      await fetchEntities(user?.role || UserRole.ADMIN, uid);
+                    } else {
+                      // Manual state update fallback
+                      const { data: list } = await supabase.from('generators').select('*');
+                      if (list) {
+                        setGenerators(list.map((g: any) => ({
+                          ...g,
+                          rating: Number(g.rating),
+                          discount: Number(g.discount),
+                          estimatedSavings: Number(g.estimated_savings),
+                          commission: Number(g.commission),
+                          responsibleName: g.responsible_name,
+                          responsiblePhone: g.responsible_phone,
+                          icon: 'wb_sunny',
+                          color: 'from-emerald-600 to-teal-500',
+                          logoUrl: g.logo_url || null,
+                          accessEmail: g.access_email,
+                          accessPassword: g.access_password
+                        })));
+                      }
+                    }
+                  } else {
+                    console.error('Batch import error:', error);
+                    alert('Erro ao importar usinas. Detalhes: ' + error.message);
+                  }
+                }}
                 clients={globalClients}
                 onDeleteClient={deleteClient}
+                onUpdateClient={updateClient}
                 concessionaires={concessionaires}
                 onAddConcessionaire={async (c) => {
                   const { error } = await supabase.from('concessionaires').insert({
@@ -485,12 +625,7 @@ const App: React.FC = () => {
             <span className="material-symbols-outlined hidden dark:block">light_mode</span>
           </button>
 
-          <div className="flex flex-col gap-1 text-[10px] bg-white/80 dark:bg-slate-900/80 p-2 rounded-lg border border-slate-200 dark:border-slate-700 backdrop-blur">
-            <span className="font-bold mb-1 border-b border-slate-300 dark:border-slate-700">DEBUG NAV:</span>
-            <Link to="/" className="text-blue-500">Home</Link>
-            <Link to="/consumer-dashboard" className="text-blue-500">Meu Painel</Link>
-            <Link to="/admin" className="text-blue-500">Admin</Link>
-          </div>
+
         </div>
       </div>
     </HashRouter>
