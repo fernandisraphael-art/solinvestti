@@ -49,15 +49,20 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <button
                         key={item.id}
                         onClick={() => onTabChange(item.id)}
-                        className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all ${activeTab === item.id
+                        className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-200 group active:scale-[0.98] ${activeTab === item.id
                             ? 'bg-primary text-brand-navy shadow-lg shadow-primary/20'
-                            : 'text-white/60 hover:text-white hover:bg-white/10'
+                            : 'text-white/60 hover:text-white hover:bg-white/5'
                             }`}
                     >
-                        <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
-                        <span className="text-[11px] font-black uppercase tracking-widest text-left">
-                            {item.label} {item.count !== undefined && `(${item.count})`}
+                        <span className={`material-symbols-outlined text-[20px] transition-transform group-hover:scale-110 ${activeTab === item.id ? 'text-brand-navy' : 'text-primary/70'}`}>{item.icon}</span>
+                        <span className="text-[11px] font-black uppercase tracking-widest text-left flex-1">
+                            {item.label}
                         </span>
+                        {item.count !== undefined && (
+                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${activeTab === item.id ? 'bg-brand-navy/10 text-brand-navy' : 'bg-white/10 text-white/40'}`}>
+                                {item.count}
+                            </span>
+                        )}
                     </button>
                 ))}
 

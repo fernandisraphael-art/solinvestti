@@ -142,36 +142,56 @@ const GeneratorSignup: React.FC<GeneratorSignupProps> = ({ onComplete }) => {
       if (formData.email !== formData.confirmEmail) throw new Error('Os e-mails informados não coincidem.');
       if (formData.password !== formData.confirmPassword) throw new Error('As senhas informadas não coincidem.');
 
-      // 1. Sign up user in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-      });
+      let userId: string | null = null;
 
-      if (authError) throw authError;
-      if (!authData.user) throw new Error("Erro ao iniciar cadastro. Tente novamente.");
-
-      // 2. Create profile entry
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: authData.user.id,
-          name: formData.contactName,
-          role: UserRole.GENERATOR
+      // 1. TRY to sign up user in Supabase Auth (but don't block if it fails)
+      try {
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
         });
 
-      if (profileError) console.error("Erro ao criar perfil (não fatal):", profileError);
+        if (authError) {
+          console.warn("⚠️ Auth signup warning (might be duplicate):", authError.message);
+          // Continue anyway - user might already exist
+        } else if (authData.user) {
+          userId = authData.user.id;
 
-      // 3. Create Generator Registry (RPC)
-      const { error: genError } = await supabase.rpc('create_generator_registry', {
-        p_user_id: authData.user.id,
-        p_name: formData.socialName,
-        p_region: `${formData.locationCity} / ${formData.locationState}`,
-        p_responsible_name: formData.contactName,
-        p_responsible_phone: formData.contactPhone,
-        p_capacity: Number(formData.energyCapacity),
-        p_email: formData.email,
-        p_password: formData.password
+          // 2. Create profile entry (only if we got a new user)
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert({
+              id: authData.user.id,
+              name: formData.contactName,
+              role: UserRole.GENERATOR
+            });
+
+          if (profileError) console.error("Erro ao criar perfil (não fatal):", profileError);
+        }
+      } catch (authErr: any) {
+        console.warn("⚠️ Auth signup failed:", authErr.message);
+        // Continue anyway
+      }
+
+      // 3. Create Generator Registry (Direct Insert - NOT RPC, to handle null user_id)
+      const { error: genError } = await supabase.from('generators').insert({
+        name: formData.socialName,
+        type: 'Solar',
+        region: `${formData.locationCity} / ${formData.locationState}`,
+        responsible_name: formData.contactName,
+        responsible_phone: formData.contactPhone,
+        capacity: Number(formData.energyCapacity),
+        access_email: formData.email,
+        access_password: formData.password,
+        status: 'pending',
+        rating: 5,
+        discount: 15,
+        commission: 5,
+        estimated_savings: 0,
+        city: formData.locationCity,
+        company: formData.socialName,
+        color: 'from-emerald-500 to-teal-600',
+        icon: 'solar_power'
       });
 
       if (genError) throw genError;
@@ -179,7 +199,6 @@ const GeneratorSignup: React.FC<GeneratorSignupProps> = ({ onComplete }) => {
       // 4. Trigger Email Notification via Edge Function (FAIL-SAFE)
       try {
         console.log('📧 Tentando enviar e-mail...');
-        // Usamos invoke com tratamento de erro isolado para não propagar throw
         await supabase.functions.invoke('send-registration-email', {
           body: { generator: formData }
         }).then(({ error }) => {
@@ -190,7 +209,7 @@ const GeneratorSignup: React.FC<GeneratorSignupProps> = ({ onComplete }) => {
         console.error('⚠️ Falha de conexão ao tentar disparar e-mail:', emailErr);
       }
 
-      // 5. Sucesso FINAL (Sempre executado se chegou aqui)
+      // 5. Sucesso FINAL
       alert('Cadastro realizado com sucesso! Em breve nossa equipe entrará em contato.');
       navigate('/');
 

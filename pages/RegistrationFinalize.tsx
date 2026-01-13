@@ -38,14 +38,7 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
         alert("Por favor, anexe sua fatura de energia para continuar.");
         return;
       }
-      if (!password || password.length < 6) {
-        alert("A senha deve ter pelo menos 6 caracteres.");
-        return;
-      }
-      if (password !== confirmPassword) {
-        alert("As senhas não coincidem.");
-        return;
-      }
+      // Password validation removed
     }
 
     setIsFinalizing(true);
@@ -92,20 +85,20 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
         <div className="size-24 rounded-full bg-primary/20 text-primary flex items-center justify-center mb-8 animate-bounce">
           <span className="material-symbols-outlined text-5xl">verified</span>
         </div>
-        <h2 className="text-4xl font-display font-black mb-4 text-brand-navy dark:text-white">
-          {isUpdate ? 'Estratégia Atualizada!' : 'Adesão Processada!'}
+        <h2 className="text-3xl font-display font-black mb-4 text-brand-navy dark:text-white">
+          {isUpdate ? 'Estratégia Atualizada!' : 'Cadastro Recebido!'}
         </h2>
-        <p className="text-slate-500 dark:text-slate-400 max-w-md mb-12 text-lg font-medium leading-relaxed">
+        <p className="text-slate-500 dark:text-slate-400 max-w-lg mb-12 text-sm font-medium leading-relaxed uppercase tracking-wide">
           {isUpdate
             ? `Olá ${userData.name}, sua nova estratégia de rendimento com a ${userData.selectedProvider?.name} já foi aplicada ao seu perfil.`
-            : `Tudo pronto, ${userData.name}! Seus dados foram homologados. Agora você pode acompanhar o crescimento do seu patrimônio em tempo real.`
+            : `Assim que avaliarmos sua fatura, a geradora entrará em contato para efetivar a conexão. Após a confirmação, seu acesso ao dashboard será liberado pela administração.`
           }
         </p>
         <button
-          onClick={() => navigate('/consumer-dashboard')}
+          onClick={() => navigate('/')}
           className="btn-startpro text-white font-black px-16 py-6 rounded-[2rem] shadow-2xl flex items-center gap-4 hover:scale-105 transition-transform uppercase text-xs tracking-widest"
         >
-          Acessar meu Painel Financeiro <span className="material-symbols-outlined">dashboard</span>
+          Voltar para o Início <span className="material-symbols-outlined">home</span>
         </button>
       </div>
     );
@@ -181,38 +174,7 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
             </div>
           </div>
 
-          {!isUpdate && (
-            <div className="bg-slate-50 dark:bg-white/5 p-10 rounded-[2.5rem] border border-slate-100 dark:border-white/5 shadow-inner-soft mt-8 animate-in fade-in slide-in-from-top-4 duration-500">
-              <h4 className="font-black text-[11px] mb-8 text-slate-400 uppercase tracking-[0.3em] flex items-center gap-2">
-                <span className="material-symbols-outlined text-sm">lock</span> Criar Senha de Acesso
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Senha</label>
-                  <input
-                    required
-                    type="password"
-                    className="w-full bg-white dark:bg-brand-navy border border-slate-100 dark:border-white/5 rounded-xl px-5 py-4 outline-none focus:ring-4 ring-primary/10 font-bold text-brand-navy dark:text-white text-xs"
-                    placeholder="Mínimo 6 caracteres"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Confirmar</label>
-                  <input
-                    required
-                    type="password"
-                    className="w-full bg-white dark:bg-brand-navy border border-slate-100 dark:border-white/5 rounded-xl px-5 py-4 outline-none focus:ring-4 ring-primary/10 font-bold text-brand-navy dark:text-white text-xs"
-                    placeholder="••••••••"
-                    value={confirmPassword}
-                    onChange={e => setConfirmPassword(e.target.value)}
-                  />
-                </div>
-              </div>
-              <p className="text-[9px] text-slate-400 mt-6 uppercase font-black tracking-widest opacity-40">Necessário para acessar seu painel posteriormente</p>
-            </div>
-          )}
+          {/* Password creation removed as per legacy requirement - Admin approves first */}
 
           <button
             disabled={isFinalizing}

@@ -3,27 +3,35 @@ import { EnergyProvider } from '../types';
 export const parseBatchData = (data: any[]): EnergyProvider[] => {
     return data.map((row: any) => {
         const cleanStr = (s: any) => String(s || '').trim();
-        // Helper to normalize strings (trim, uppercase, remove accents, remove _)
-        const normalizeKey = (k: string) =>
+        // Helper to normalize strings (trim, uppercase, remove accents, remove symbols)
+        const normalizeString = (k: string) =>
             k.trim().toUpperCase()
                 .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove accents
-                .replace(/_/g, ' ').replace(/\./g, '');
+                .replace(/[^A-Z0-9 ]/g, ' ') // Replace symbols with space
+                .replace(/\s+/g, ' ') // Collapse spaces
+                .trim();
 
-        // Normalize keys once for easier matching
         const normalizedKeys = Object.keys(row).reduce((acc, key) => {
-            acc[normalizeKey(key)] = key; // Map CLEAN -> ORIGINAL
+            acc[normalizeString(key)] = key;
             return acc;
         }, {} as Record<string, string>);
 
         const findValue = (searchTerms: string[]) => {
-            for (const term of searchTerms) {
-                const cleanTerm = normalizeKey(term);
-                // 1. Try direct match on normalized keys
+            const cleanSearchTerms = searchTerms.map(normalizeString).filter(t => t.length > 0);
+
+            // 1. Prioritize EXACT matches for any search term
+            for (const cleanTerm of cleanSearchTerms) {
                 if (normalizedKeys[cleanTerm]) {
                     return cleanStr(row[normalizedKeys[cleanTerm]]);
                 }
-                // 2. Try partial match
-                const partialKey = Object.keys(normalizedKeys).find(k => k.includes(cleanTerm));
+            }
+
+            // 2. Try partial match as a fallback (minimum 4 chars to avoid false positives)
+            for (const cleanTerm of cleanSearchTerms) {
+                if (cleanTerm.length < 4) continue;
+                const partialKey = Object.keys(normalizedKeys).find(k =>
+                    (k.length >= 4 && k.includes(cleanTerm)) || (cleanTerm.length >= 4 && cleanTerm.includes(k))
+                );
                 if (partialKey) {
                     return cleanStr(row[normalizedKeys[partialKey]]);
                 }
@@ -31,67 +39,56 @@ export const parseBatchData = (data: any[]): EnergyProvider[] => {
             return null;
         };
 
-        // Specific Mappings based on User Request
-        // Note: Handling both "NOME_D_AUSINA" (Screenshot typo) and "NOME DA USINA" (Correction)
-        const name = findValue(['USINA', 'NOME D AUSINA', 'NOME DA USINA', 'NOME', 'EMPRESA', 'GERADOR', 'NAME']) || 'Nova Usina';
-        const company = findValue(['EMPRESA', 'COMPANY']) || name; // Fallback to name if company missing
+        const name = findValue(['USINA', 'NOME DA USINA', 'PLANT', 'NAME', 'PROJETO', 'PROJECT', 'NOME D AUSINA']) || 'Nova Usina';
+        const company = findValue(['EMPRESA', 'COMPANY', 'FIRMA', 'RAZAO SOCIAL']) || name;
 
-        // ... rest of the parsing ...
-        const region = findValue(['REGIAO', 'REGION', 'ESTADO', 'UF', 'LOCAL']) || 'MG';
-        const city = findValue(['CIDADE', 'CITY', 'LOCAL', 'MUNICIPIO']) || 'Brasil';
+        const region = findValue(['REGIAO', 'ESTADO', 'UF', 'STATE', 'REGION', 'LOCAL']) || 'MG';
+        const city = findValue(['CIDADE', 'CITY', 'LOCALIDADE', 'MUNICIPIO', 'TOWN']) || 'Brasil';
 
-        const website = findValue(['SITE', 'WEBSITE', 'URL']) || '';
+        const website = findValue(['SITE', 'WEBSITE', 'URL', 'LINK']) || '';
 
         // Capacity
-        const capacityRaw = findValue(['DEMANDA DISPONIVEL', 'DEMANDA', 'CAPACIDADE', 'POTENCIA', 'POWER', 'KWP', 'MWP']) || '0';
-        const capacityMatch = capacityRaw.match(/(\d+[.,]?\d*)/);
-        const capacity = capacityMatch ? capacityMatch[0].replace(',', '.') : '0';
+        const capacityRaw = findValue(['DEMANDA DISPONIVEL', 'DEMANDA', 'CAPACIDADE', 'CAPACITY', 'POTENCIA', 'POWER', 'KWP', 'MWP', 'GERACAO']) || '0';
+        const capacityMatch = capacityRaw.replace(',', '.').match(/(\d+[.]?\d*)/);
+        const capacity = capacityMatch ? capacityMatch[0] : '0';
 
         // Revenue
-        const revenueRaw = findValue(['FATURAMENTO ANUAL', 'FATURAMENTO', 'REVENUE', 'VALOR', 'MONTAGEM']) || '0';
-        // Keep only numbers, commas, dots, minus
-        const revenueClean = revenueRaw.replace(/[^0-9,.-]/g, '').replace(',', '.');
+        const revenueRaw = findValue(['FATURAMENTO ANUAL', 'FATURAMENTO', 'REVENUE', 'EARNINGS', 'VALOR', 'MONTAGEM', 'INCOME']) || '0';
+        const revenueClean = revenueRaw.replace(/[R$\s.,]/g, (match, offset, str) => {
+            if (match === '.' || match === ',') {
+                // If it's the last separator before cents, it's a dot
+                const lastSep = Math.max(str.lastIndexOf('.'), str.lastIndexOf(','));
+                return offset === lastSep ? '.' : '';
+            }
+            return '';
+        }) || '0';
         const revenue = parseFloat(revenueClean) || 0;
 
         // Discount
-        const discountRaw = findValue(['DESC', 'DESCONTO', 'DISCOUNT']) || '15'; // Removed dot from search terms as we clean keys
+        const discountRaw = findValue(['DESC', 'DESCONTO', 'DISCOUNT', 'OFF']) || '15';
         let discount = parseFloat(discountRaw.replace('%', '').replace(',', '.')) || 15;
 
         // Commission
-        // User noted missing commission. If column "COMISSAO" exists, use it. If not, default to 5.
-        // Screenshot did not show "COMISSAO", so it likely relies on default.
-        const commRaw = findValue(['COMM', 'COMISSAO', 'COMMISSION']) || '5';
+        const commRaw = findValue(['COMM', 'COMISSAO', 'COMMISSION', 'FEE']) || '5';
         let commission = parseFloat(commRaw.replace('%', '').replace(',', '.')) || 5;
 
+        // Contacts
+        let respName = findValue(['NOME CONTATO', 'RESPONSAVEL', 'RESPONSIBLE', 'GESTOR', 'MANAGER', 'OWNER']) || 'Admin Solinvestti';
+        let mobile = findValue(['CEL', 'CELULAR', 'MOBILE', 'WHATSAPP', 'ZAP', 'PHONE']) || '';
+        let landline = findValue(['TEL', 'TELEFONE', 'LANDLINE', 'FIXO', 'PHONE']) || '';
+        let rawEmail = findValue(['EMAIL', 'E MAIL', 'MAIL', 'CONTATO EMAIL']) || '';
 
-        let respName = findValue(['NOME_CONTATO', 'Nome Contato', 'RESPONSÁVEL', 'Responsável', 'Responsavel', 'Responsible', 'Gestor']) || 'Admin Solinvestti';
-
-        // Explicitly separate Phone and Email logic
-        // 1. Look for explicit Phone columns
-        // 'CEL' is usually Mobile, 'TEL' is Landline
-        let mobile = findValue(['CEL', 'Cel', 'Celular', 'Mobile', 'Whatsapp', 'ZAP']) || '';
-        let landline = findValue(['TEL', 'Tel', 'Telefone', 'Landline', 'Fixo']) || '';
-
-        // If one is missing, check generic phone columns
-        if (!mobile) mobile = findValue(['PHONE', 'Phone']) || '';
-
-        // 2. Look for explicit Email columns
-        let rawEmail = findValue(['EMAIL', 'Email', 'E-mail', 'Mail', 'Correio']) || '';
-
-        // 3. Fallback: Check 'Contato' column
-        const genericContact = findValue(['CONTATO', 'Contato', 'Contact']) || '';
-
+        const genericContact = findValue(['CONTATO', 'CONTACT']) || '';
         if (genericContact) {
             if (genericContact.includes('@')) {
                 if (!rawEmail) rawEmail = genericContact;
-            } else if (genericContact.match(/\d{4}/)) {
+            } else if (genericContact.match(/\d/)) {
                 if (!mobile) mobile = genericContact;
             } else {
                 if (respName === 'Admin Solinvestti') respName = genericContact;
             }
         }
 
-        // CRITICAL: Ensure Phone is NOT an Email
         if (mobile.includes('@')) {
             if (!rawEmail) rawEmail = mobile;
             mobile = '---';
@@ -110,7 +107,7 @@ export const parseBatchData = (data: any[]): EnergyProvider[] => {
             capacity,
             commission,
             responsibleName: respName,
-            responsiblePhone: mobile, // Using Mobile as primary contact
+            responsiblePhone: mobile,
             landline,
             website,
             annualRevenue: revenue,

@@ -1,8 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { EnergyProvider } from '../types';
+import { EnergyProvider, UserRole } from '../types';
 import Logo from '../components/Logo';
+import ProviderCard from '../components/marketplace/ProviderCard';
+import BillInput from '../components/marketplace/BillInput';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ConsumerMarketplaceProps {
   userData: any;
@@ -12,21 +15,29 @@ interface ConsumerMarketplaceProps {
 
 const ConsumerMarketplace: React.FC<ConsumerMarketplaceProps> = ({ userData, generators, onSelect }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [billValue, setBillValue] = useState(userData.billValue || '0');
 
   useEffect(() => {
     onSelect({ billValue });
   }, [billValue]);
 
-  const handleSelect = (provider: any) => {
+  const handleSelect = (provider: EnergyProvider) => {
     onSelect({ selectedProvider: provider, billValue });
     navigate('/savings');
   };
 
-  const currentBill = Number(billValue) || 0;
-
   const rankedProviders = [...generators]
     .filter(p => p.status === 'active')
+    .filter(p => {
+      if (userData.state) {
+        // Flexible matching: check if region contains the state (case-insensitive)
+        const regionLower = (p.region || '').toLowerCase();
+        const stateLower = userData.state.toLowerCase();
+        return regionLower.includes(stateLower) || stateLower.includes(regionLower);
+      }
+      return true;
+    })
     .sort((a, b) => b.discount - a.discount);
 
   return (
@@ -59,72 +70,26 @@ const ConsumerMarketplace: React.FC<ConsumerMarketplaceProps> = ({ userData, gen
             </p>
           </div>
 
-          <div className="w-full lg:w-[420px] bg-white p-10 rounded-[3rem] shadow-premium border border-slate-100">
-            <label className="block text-[10px] font-black text-brand-slate uppercase tracking-widest mb-4">Gasto Mensal Atual (Média)</label>
-            <div className="relative mb-6">
-              <span className="absolute left-6 top-1/2 -translate-y-1/2 text-primary font-black text-2xl">R$</span>
-              <input
-                type="number"
-                className="w-full bg-slate-50 border-none rounded-2xl p-6 pl-16 text-4xl font-display font-extrabold text-brand-navy outline-none focus:ring-4 ring-primary/10"
-                placeholder="0"
-                value={billValue}
-                onChange={(e) => setBillValue(e.target.value)}
-              />
-            </div>
-            <div className="flex items-center gap-2 text-[10px] font-black text-primary uppercase italic">
-              <span className="material-symbols-outlined text-[16px]">verified</span> Projeção em tempo real ativada
-            </div>
-          </div>
+          <BillInput value={billValue} onChange={setBillValue} />
         </div>
 
         <div className="space-y-6">
-          {rankedProviders.map((provider, index) => {
-            const savings = currentBill * (provider.discount / 100);
-            const isTop = index === 0;
+          {rankedProviders.map((provider, index) => (
+            <ProviderCard
+              key={provider.id}
+              provider={provider}
+              index={index}
+              currentBill={Number(billValue)}
+              onSelect={handleSelect}
+            />
+          ))}
 
-            return (
-              <div
-                key={provider.id}
-                className={`bg-white rounded-[2.5rem] border group transition-all duration-300 hover:shadow-2xl hover:border-primary/30 ${isTop ? 'border-primary/20 ring-1 ring-primary/5' : 'border-slate-100'}`}
-              >
-                <div className="p-8 md:p-10 flex flex-col md:flex-row md:items-center justify-between gap-10">
-                  <div className="flex items-center gap-8 md:w-1/3">
-                    <div className={`text-4xl font-display font-black w-14 text-center ${isTop ? 'text-primary' : 'text-slate-100'}`}>
-                      {index + 1}
-                    </div>
-
-                    <div className={`size-20 rounded-2xl flex items-center justify-center font-display font-black text-2xl text-white shadow-xl bg-gradient-to-br ${provider.color}`}>
-                      {provider.name[0]}
-                    </div>
-
-                    <div>
-                      <h3 className="text-xl font-display font-bold text-brand-navy group-hover:text-primary transition-colors">{provider.name}</h3>
-                      <p className="text-[10px] font-black text-brand-slate uppercase tracking-widest mt-1">{provider.region}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col md:items-center md:w-1/3 border-y md:border-y-0 md:border-x border-slate-50 py-6 md:py-0">
-                    <p className="text-[10px] text-brand-slate font-black uppercase tracking-widest mb-2">Desconto / ROI</p>
-                    <div className="text-center">
-                      <span className="text-3xl font-display font-extrabold text-primary">-{provider.discount}%</span>
-                      {currentBill > 0 && (
-                        <p className="text-[11px] font-bold text-brand-navy mt-1">Economia: R$ {savings.toLocaleString('pt-BR')}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="md:w-1/3 flex justify-end">
-                    <button
-                      onClick={() => handleSelect(provider)}
-                      className={`px-12 py-5 rounded-full font-black text-[12px] uppercase tracking-widest transition-all ${isTop ? 'btn-startpro text-white' : 'bg-slate-50 text-brand-navy hover:bg-slate-100'}`}
-                    >
-                      Selecionar Usina
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {rankedProviders.length === 0 && (
+            <div className="text-center py-20 bg-white rounded-[3rem] border border-dashed border-slate-200">
+              <span className="material-symbols-outlined text-5xl text-slate-200 mb-4">search_off</span>
+              <p className="text-slate-400 font-bold">Nenhuma usina disponível para {userData.state || 'sua região'} no momento.</p>
+            </div>
+          )}
         </div>
 
         <div className="mt-20 p-12 bg-brand-navy rounded-[3rem] text-center max-w-4xl mx-auto shadow-2xl relative overflow-hidden">
@@ -134,7 +99,7 @@ const ConsumerMarketplace: React.FC<ConsumerMarketplaceProps> = ({ userData, gen
           <button className="text-primary font-black text-xs uppercase tracking-[0.3em] hover:text-white transition-colors">Solicitar Auditoria Corporativa</button>
         </div>
       </main>
-    </div>
+    </div >
   );
 };
 

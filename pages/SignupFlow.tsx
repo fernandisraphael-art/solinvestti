@@ -26,9 +26,9 @@ const SignupFlow: React.FC<{ onComplete: (data: any) => void }> = ({ onComplete 
   };
 
   const isFormValid =
-    formData.name.trim() !== '' &&
-    formData.email.trim() !== '' &&
-    formData.phone.trim() !== '' &&
+    formData.name.trim().length >= 3 &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) &&
+    formData.phone.replace(/\D/g, '').length >= 10 &&
     formData.state !== '' &&
     formData.billValue !== '' &&
     Number(formData.billValue) > 0;

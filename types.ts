@@ -16,11 +16,13 @@ export interface EnergyProvider {
   tag?: string;
   color: string;
   icon: string;
-  status?: 'active' | 'pending' | 'inactive';
+  status?: 'active' | 'pending' | 'inactive' | 'cancelled';
   commission?: number; // Percentual de comissão para a plataforma
+
   // Novos campos para Governança Admin
   responsibleName?: string;
   responsiblePhone?: string;
+
   capacity?: string | number;
   accessEmail?: string;
   accessPassword?: string;
@@ -57,4 +59,18 @@ export interface FinancialMetric {
   value: string;
   trend: number;
   subtext: string;
+}
+
+export interface Client {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  city?: string;
+  state?: string;
+  billValue?: number;
+  consumption?: number; // kWh
+  supplier_id?: string; // Link to generator (table column)
+  supplierId?: string; // Link to generator (camelCase)
+  status?: string;
 }
