@@ -27,6 +27,14 @@ const PARTNERS = [
     description: 'Plataforma intuitiva e taxas competitivas para pequenos e grandes investidores.',
     color: 'from-cyan-400 to-blue-500',
     logo: 'https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&q=80&w=100'
+  },
+  {
+    id: 'tsr',
+    name: 'TSR Investimentos',
+    tagline: 'Soluções financeiras de alta performance',
+    description: 'Acesse estratégias profissionais e potencialize seus ganhos com a TSR.',
+    color: 'from-blue-600 to-indigo-700',
+    logo: '/logos/tsr.png'
   }
 ];
 
@@ -77,8 +85,12 @@ const InvestmentPartners: React.FC<{ userData: any; onSelect: (data: any) => voi
 
               {/* Logo Placeholder */}
               <div className={`size-20 rounded-3xl bg-gradient-to-br ${partner.color} mb-6 flex items-center justify-center shadow-xl shadow-slate-200 dark:shadow-black/40 p-1`}>
-                <div className="w-full h-full bg-white rounded-2xl flex items-center justify-center font-black text-slate-900 text-xl tracking-tighter">
-                  {partner.name.split(' ')[0]}
+                <div className="w-full h-full bg-white rounded-2xl flex items-center justify-center font-black text-slate-900 text-xl tracking-tighter overflow-hidden">
+                  {partner.logo.startsWith('/') ? (
+                    <img src={partner.logo} alt={partner.name} className="w-full h-full object-contain p-2" />
+                  ) : (
+                    partner.name.split(' ')[0]
+                  )}
                 </div>
               </div>
 
