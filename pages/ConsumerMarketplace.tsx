@@ -34,16 +34,16 @@ const ConsumerMarketplace: React.FC<ConsumerMarketplaceProps> = ({ userData, gen
       <nav className="glass-nav sticky top-0 z-50 h-24">
         <div className="max-w-7xl mx-auto px-6 h-full flex justify-between items-center">
           <Link to="/">
-             <Logo variant="dark" />
+            <Logo variant="dark" />
           </Link>
-          
+
           <div className="flex items-center gap-6">
             <div className="text-right hidden sm:block">
-              <p className="text-[9px] font-black text-brand-slate uppercase tracking-widest">Acesso Consultoria</p>
+              <p className="text-[9px] font-black text-brand-slate uppercase tracking-widest">Acesso Usuário</p>
               <p className="text-xs font-bold text-brand-navy">{userData.name || 'Convidado'}</p>
             </div>
             <div className="size-11 rounded-full bg-white shadow-premium flex items-center justify-center border border-slate-100">
-               <span className="material-symbols-outlined text-brand-navy">person</span>
+              <span className="material-symbols-outlined text-brand-navy">person</span>
             </div>
           </div>
         </div>
@@ -53,7 +53,7 @@ const ConsumerMarketplace: React.FC<ConsumerMarketplaceProps> = ({ userData, gen
         <div className="flex flex-col lg:flex-row justify-between items-start gap-16 mb-20">
           <div className="max-w-2xl">
             <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest mb-6">Marketplace Institucional v4.0</span>
-            <h2 className="text-5xl font-display font-extrabold text-brand-navy mb-6">Ranking de Eficiência Energética</h2>
+            <h2 className="text-5xl font-display font-extrabold text-brand-navy mb-6">Ranking das Geradoras</h2>
             <p className="text-lg text-brand-slate leading-relaxed">
               Baseado no seu perfil de consumo em <span className="text-brand-navy font-bold">{userData.state || 'Brasil'}</span>, selecionamos as usinas com maior potencial de retorno financeiro.
             </p>
@@ -63,7 +63,7 @@ const ConsumerMarketplace: React.FC<ConsumerMarketplaceProps> = ({ userData, gen
             <label className="block text-[10px] font-black text-brand-slate uppercase tracking-widest mb-4">Gasto Mensal Atual (Média)</label>
             <div className="relative mb-6">
               <span className="absolute left-6 top-1/2 -translate-y-1/2 text-primary font-black text-2xl">R$</span>
-              <input 
+              <input
                 type="number"
                 className="w-full bg-slate-50 border-none rounded-2xl p-6 pl-16 text-4xl font-display font-extrabold text-brand-navy outline-none focus:ring-4 ring-primary/10"
                 placeholder="0"
@@ -83,8 +83,8 @@ const ConsumerMarketplace: React.FC<ConsumerMarketplaceProps> = ({ userData, gen
             const isTop = index === 0;
 
             return (
-              <div 
-                key={provider.id} 
+              <div
+                key={provider.id}
                 className={`bg-white rounded-[2.5rem] border group transition-all duration-300 hover:shadow-2xl hover:border-primary/30 ${isTop ? 'border-primary/20 ring-1 ring-primary/5' : 'border-slate-100'}`}
               >
                 <div className="p-8 md:p-10 flex flex-col md:flex-row md:items-center justify-between gap-10">
@@ -92,7 +92,7 @@ const ConsumerMarketplace: React.FC<ConsumerMarketplaceProps> = ({ userData, gen
                     <div className={`text-4xl font-display font-black w-14 text-center ${isTop ? 'text-primary' : 'text-slate-100'}`}>
                       {index + 1}
                     </div>
-                    
+
                     <div className={`size-20 rounded-2xl flex items-center justify-center font-display font-black text-2xl text-white shadow-xl bg-gradient-to-br ${provider.color}`}>
                       {provider.name[0]}
                     </div>
@@ -108,13 +108,13 @@ const ConsumerMarketplace: React.FC<ConsumerMarketplaceProps> = ({ userData, gen
                     <div className="text-center">
                       <span className="text-3xl font-display font-extrabold text-primary">-{provider.discount}%</span>
                       {currentBill > 0 && (
-                         <p className="text-[11px] font-bold text-brand-navy mt-1">Economia: R$ {savings.toLocaleString('pt-BR')}</p>
+                        <p className="text-[11px] font-bold text-brand-navy mt-1">Economia: R$ {savings.toLocaleString('pt-BR')}</p>
                       )}
                     </div>
                   </div>
 
                   <div className="md:w-1/3 flex justify-end">
-                    <button 
+                    <button
                       onClick={() => handleSelect(provider)}
                       className={`px-12 py-5 rounded-full font-black text-[12px] uppercase tracking-widest transition-all ${isTop ? 'btn-startpro text-white' : 'bg-slate-50 text-brand-navy hover:bg-slate-100'}`}
                     >

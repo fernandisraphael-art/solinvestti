@@ -16,7 +16,12 @@ const SignupFlow: React.FC<{ onComplete: (data: any) => void }> = ({ onComplete 
   });
 
   const handleNext = () => {
-    onComplete(formData);
+    // Convert raw digits to float string (ex: '30000' -> '300.00')
+    const formattedData = {
+      ...formData,
+      billValue: (Number(formData.billValue) / 100).toFixed(2)
+    };
+    onComplete(formattedData);
     navigate('/marketplace');
   };
 
@@ -129,7 +134,7 @@ const SignupFlow: React.FC<{ onComplete: (data: any) => void }> = ({ onComplete 
                     className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-slate-900 dark:text-white font-black"
                     placeholder="0,00"
                     value={maskCurrency(String(formData.billValue))}
-                    onChange={e => setFormData({ ...formData, billValue: String(parseCurrencyToNumber(e.target.value)) })}
+                    onChange={e => setFormData({ ...formData, billValue: e.target.value.replace(/\D/g, '') })}
                   />
                 </div>
               </div>
@@ -140,7 +145,7 @@ const SignupFlow: React.FC<{ onComplete: (data: any) => void }> = ({ onComplete 
                 onClick={handleNext}
                 className="w-full btn-startpro text-white font-black py-5 rounded-2xl shadow-premium mt-6 flex items-center justify-center gap-3 transition-all disabled:opacity-30 disabled:cursor-not-allowed uppercase text-xs tracking-widest"
               >
-                Analisar Viabilidade <span className="material-symbols-outlined text-sm">analytics</span>
+                Ver Ofertas <span className="material-symbols-outlined text-sm">analytics</span>
               </button>
             </div>
           </div>
