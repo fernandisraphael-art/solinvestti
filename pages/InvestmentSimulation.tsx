@@ -151,7 +151,7 @@ const InvestmentSimulation: React.FC<{ userData: any; onComplete: (data: any) =>
           </button>
 
           <div className="mt-4 text-center">
-            <p className="text-[8px] text-slate-300 font-medium leading-relaxed px-4">
+            <p className="text-[9px] text-slate-500 font-bold leading-relaxed px-4">
               * As projeções apresentadas são meramente ilustrativas e baseadas em cenários hipotéticos. A rentabilidade real pode variar de acordo com as condições de mercado e taxas vigentes.
             </p>
           </div>
