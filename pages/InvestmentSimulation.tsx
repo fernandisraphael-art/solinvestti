@@ -149,6 +149,12 @@ const InvestmentSimulation: React.FC<{ userData: any; onComplete: (data: any) =>
           >
             Efetivar Estratégia <span className="material-symbols-outlined text-lg">rocket_launch</span>
           </button>
+
+          <div className="mt-4 text-center">
+            <p className="text-[8px] text-slate-300 font-medium leading-relaxed px-4">
+              * As projeções apresentadas são meramente ilustrativas e baseadas em cenários hipotéticos. A rentabilidade real pode variar de acordo com as condições de mercado e taxas vigentes.
+            </p>
+          </div>
         </div>
 
         <div className="flex-1 bg-brand-deep p-6 lg:p-10 lg:m-4 lg:rounded-[2.5rem] text-white flex flex-col relative overflow-hidden shadow-2xl border border-white/5">
@@ -219,11 +225,7 @@ const InvestmentSimulation: React.FC<{ userData: any; onComplete: (data: any) =>
                 </div>
               ))}
             </div>
-            <div className="mt-2 text-center">
-              <p className="text-[8px] text-white/30 font-medium leading-relaxed max-w-2xl mx-auto">
-                * As projeções apresentadas são meramente ilustrativas e baseadas em cenários hipotéticos. A rentabilidade real pode variar de acordo com as condições de mercado, taxas vigentes e a análise de crédito específica de cada instituição financeira parceira. Consulte a lâmina de cada produto para mais detalhes.
-              </p>
-            </div>
+
           </div>
         </div>
       </main>
