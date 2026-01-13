@@ -30,6 +30,7 @@ interface AdminDashboardProps {
   clients: any[];
   onDeleteClient: (id: string) => void;
   onUpdateClient: (id: string, updates: any) => void;
+  onApproveClient: (id: string) => void;
   concessionaires: Concessionaire[];
   onAddConcessionaire: (c: Concessionaire) => void;
   onUpdateConcessionaire: (id: string, data: Partial<Concessionaire>) => void;
@@ -47,6 +48,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   clients,
   onDeleteClient,
   onUpdateClient,
+  onApproveClient,
   concessionaires,
   onAddConcessionaire,
   onUpdateConcessionaire,
@@ -337,7 +339,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             />
           )}
 
-          {activeTab === 'clients' && <ClientsTab clients={clients} onEditClient={setEditingClient} onDeleteClient={onDeleteClient} />}
+          {activeTab === 'clients' && <ClientsTab clients={clients} onEditClient={setEditingClient} onDeleteClient={onDeleteClient} onApproveClient={onApproveClient} />}
 
           {activeTab === 'concessionaires' && <ConcessionairesTab concessionaires={concessionaires} onEdit={() => { }} onAdd={() => { }} />}
 

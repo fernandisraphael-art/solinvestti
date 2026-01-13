@@ -125,7 +125,14 @@ const App: React.FC = () => {
       }
 
       // 3. Insert into 'clients' table (this is the critical part)
-      const cleanBill = parseFloat(String(userData.billValue).replace('R$', '').replace('.', '').replace(',', '.')) || 0;
+      // Handle Brazilian number format: "500,00" or "500.00" or just "500"
+      let billString = String(userData.billValue).replace('R$', '').trim();
+      // If contains comma, it's Brazilian format with decimals
+      if (billString.includes(',')) {
+        // Remove thousand separators (dots) and replace comma with dot for decimal
+        billString = billString.replace(/\./g, '').replace(',', '.');
+      }
+      const cleanBill = parseFloat(billString) || 0;
 
       const { error: dbError } = await supabase.from('clients').insert({
         name: userData.name,
@@ -195,6 +202,10 @@ const App: React.FC = () => {
                 clients={clients}
                 onDeleteClient={async (id) => { await AdminService.deleteClient(id); refreshData(); }}
                 onUpdateClient={async (id, updates) => { await AdminService.updateClient(id, updates); refreshData(); }}
+                onApproveClient={async (id) => {
+                  await AdminService.updateClient(id, { status: 'approved' });
+                  refreshData();
+                }}
                 concessionaires={concessionaires}
                 onAddConcessionaire={async (data) => { await AdminService.addConcessionaire(data); refreshData(); }}
                 onUpdateConcessionaire={async (id, data) => { await AdminService.updateConcessionaire(id, data); refreshData(); }}
