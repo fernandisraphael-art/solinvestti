@@ -219,6 +219,11 @@ const InvestmentSimulation: React.FC<{ userData: any; onComplete: (data: any) =>
                 </div>
               ))}
             </div>
+            <div className="mt-2 text-center">
+              <p className="text-[8px] text-white/30 font-medium leading-relaxed max-w-2xl mx-auto">
+                * As projeções apresentadas são meramente ilustrativas e baseadas em cenários hipotéticos. A rentabilidade real pode variar de acordo com as condições de mercado, taxas vigentes e a análise de crédito específica de cada instituição financeira parceira. Consulte a lâmina de cada produto para mais detalhes.
+              </p>
+            </div>
           </div>
         </div>
       </main>
