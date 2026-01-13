@@ -74,11 +74,11 @@ const InvestmentPartners: React.FC<{ userData: any; onSelect: (data: any) => voi
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
           {PARTNERS.map((partner) => (
             <div
               key={partner.id}
-              className="group bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 p-8 hover:shadow-2xl transition-all duration-500 flex flex-col items-center text-center relative overflow-hidden"
+              className="group bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-6 hover:shadow-2xl transition-all duration-500 flex flex-col items-center text-center relative overflow-hidden"
             >
               {/* Background Glow */}
               <div className={`absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br ${partner.color} opacity-0 group-hover:opacity-10 rounded-full blur-3xl transition-opacity`}></div>
