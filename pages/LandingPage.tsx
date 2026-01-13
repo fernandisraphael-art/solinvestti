@@ -80,7 +80,6 @@ const LandingPage: React.FC = () => {
             <div>
               <h5 className="font-bold text-brand-navy mb-6">Plataforma</h5>
               <ul className="space-y-4 text-sm text-brand-slate font-medium">
-                <li><Link to="/marketplace" className="hover:text-primary transition-colors">Marketplace</Link></li>
                 <li><Link to="/signup" className="hover:text-primary transition-colors">Simulador IA</Link></li>
                 <li><Link to="/generator-signup" className="hover:text-primary transition-colors">Para Geradoras</Link></li>
               </ul>
@@ -95,10 +94,26 @@ const LandingPage: React.FC = () => {
             <div>
               <h5 className="font-bold text-brand-navy mb-6">Newsletter</h5>
               <p className="text-xs text-brand-slate mb-4">Receba insights mensais sobre energia e economia.</p>
-              <div className="flex gap-2">
-                <input type="email" placeholder="E-mail" className="bg-slate-50 border border-slate-100 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 ring-primary/20 w-full" />
-                <button className="bg-brand-navy text-white p-2 rounded-lg"><span className="material-symbols-outlined text-[20px]">send</span></button>
-              </div>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const email = (e.currentTarget.elements.namedItem('email') as HTMLInputElement).value;
+                  window.location.href = `mailto:mkt@solinvestti.com.br?subject=Inscrição Newsletter&body=Desejo me inscrever na newsletter: ${email}`;
+                  alert('Obrigado por se inscrever! Seu cliente de e-mail será aberto para confirmar o envio.');
+                }}
+                className="flex gap-2"
+              >
+                <input
+                  type="email"
+                  name="email"
+                  required
+                  placeholder="E-mail"
+                  className="bg-slate-50 border border-slate-100 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 ring-primary/20 w-full"
+                />
+                <button type="submit" className="bg-brand-navy text-white p-2 rounded-lg hover:bg-primary transition-colors group">
+                  <span className="material-symbols-outlined text-[20px] group-hover:scale-110 transition-transform">send</span>
+                </button>
+              </form>
             </div>
           </div>
           <div className="mt-20 pt-10 border-t border-slate-50 text-center flex flex-col md:flex-row justify-between items-center gap-4">

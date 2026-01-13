@@ -6,6 +6,7 @@ import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 import { LOGO_URL } from '../constants/assets';
+import { normalizeText } from '../lib/masks';
 
 interface GeneratorDashboardProps {
   generatorData: {
@@ -63,7 +64,9 @@ const GeneratorDashboard: React.FC<GeneratorDashboardProps> = ({ generatorData, 
   // For now we assume generatorData is fresh. logic below will handle updates.
 
   const handleProfileChange = (field: string, value: string) => {
-    setProfileForm(prev => ({ ...prev, [field]: value }));
+    const skipNormalization = ['email', 'password', 'energyCapacity'].includes(field);
+    const normalizedValue = skipNormalization ? value : normalizeText(value);
+    setProfileForm(prev => ({ ...prev, [field]: normalizedValue }));
   };
 
   // Helper to resize image

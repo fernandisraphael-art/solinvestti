@@ -5,6 +5,7 @@ import Logo from '../components/Logo';
 import { supabase } from '../lib/supabase';
 import { jsPDF } from 'jspdf';
 import { LOGO_URL } from '../constants/assets';
+import { normalizeText } from '../lib/masks';
 
 interface ConsumerDashboardProps {
   userData: any;
@@ -235,7 +236,7 @@ const ConsumerDashboard: React.FC<ConsumerDashboardProps> = ({ userData, onUpdat
               <div className="space-y-6">
                 <div>
                   <label className="block text-[10px] font-black text-brand-slate/60 uppercase tracking-widest mb-3 ml-1">Nome Completo</label>
-                  <input className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 outline-none focus:ring-4 ring-primary/5 font-bold text-brand-navy text-sm" value={editData.name} onChange={e => setEditData({ ...editData, name: e.target.value })} />
+                  <input className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 outline-none focus:ring-4 ring-primary/5 font-bold text-brand-navy text-sm" value={editData.name} onChange={e => setEditData({ ...editData, name: normalizeText(e.target.value) })} />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-brand-slate/60 uppercase tracking-widest mb-3 ml-1">E-mail</label>

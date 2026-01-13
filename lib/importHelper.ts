@@ -116,7 +116,7 @@ export const parseBatchData = (data: any[]): EnergyProvider[] => {
             annualRevenue: revenue,
             accessEmail: rawEmail,
             accessPassword: 'admin',
-            status: 'active',
+            status: 'pending',
             rating: 4.5,
             estimatedSavings: 0,
             color: 'from-emerald-400 to-teal-700',

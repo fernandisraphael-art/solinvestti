@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { UserRole } from '../types';
+import { maskPhone, maskCNPJ, maskCEP, normalizeText } from '../lib/masks';
 
 interface GeneratorSignupProps {
   onComplete: (data: any) => void;
@@ -44,15 +45,20 @@ const GeneratorSignup: React.FC<GeneratorSignupProps> = ({ onComplete }) => {
           const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
           const data = await response.json();
           if (!data.erro) {
+            const street = data.logradouro || 'Bairro Identificado';
+            const neighborhood = data.bairro || '';
             setFormData(prev => ({
               ...prev,
-              address: `${data.logradouro}, ${data.bairro}`,
+              address: `${street}${neighborhood ? `, ${neighborhood}` : ''}`,
               locationState: data.uf,
               locationCity: data.localidade
             }));
+          } else {
+            setFormData(prev => ({ ...prev, address: 'CEP não encontrado' }));
           }
         } catch (error) {
           console.error("Erro ao buscar CEP:", error);
+          setFormData(prev => ({ ...prev, address: 'Erro ao buscar endereço' }));
         } finally {
           setIsLoadingCep(false);
         }
@@ -60,6 +66,46 @@ const GeneratorSignup: React.FC<GeneratorSignupProps> = ({ onComplete }) => {
       fetchAddress();
     }
   }, [formData.cep]);
+
+  const AddressInfo = () => {
+    if (!formData.cep || formData.cep.replace(/\D/g, '').length < 8) return null;
+
+    return (
+      <div className={`md:col-span-2 p-6 rounded-3xl border-2 transition-all duration-500 mt-2 ${isLoadingCep ? 'bg-slate-50 border-slate-100 animate-pulse' : 'bg-emerald-50/30 border-emerald-500/20 shadow-sm animate-in fade-in zoom-in-95'}`}>
+        <div className="flex items-start gap-4">
+          <div className={`size-10 rounded-xl flex items-center justify-center ${isLoadingCep ? 'bg-slate-200' : 'bg-emerald-500/20 text-emerald-600'}`}>
+            <span className="material-symbols-outlined text-lg">
+              {isLoadingCep ? 'sync' : 'location_on'}
+            </span>
+          </div>
+          <div className="flex-1">
+            <p className="text-[10px] font-black text-brand-slate uppercase tracking-widest mb-1">
+              Endereço de Operação Identificado:
+            </p>
+            {isLoadingCep ? (
+              <p className="text-xs font-bold text-brand-slate">Buscando informações...</p>
+            ) : formData.address === 'CEP não encontrado' ? (
+              <p className="text-xs font-black text-red-400 uppercase">Atenção: CEP Inválido ou Não Localizado</p>
+            ) : (
+              <div className="flex flex-col gap-0.5">
+                <p className="text-sm font-black text-brand-navy">
+                  {formData.address || 'Logradouro não disponível'}
+                </p>
+                <p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">
+                  {formData.locationCity || '---'} / {formData.locationState || '--'}
+                </p>
+              </div>
+            )}
+          </div>
+          {!isLoadingCep && formData.locationCity && formData.address !== 'CEP não encontrado' && (
+            <div className="bg-emerald-500/10 text-emerald-600 p-2 rounded-lg">
+              <span className="material-symbols-outlined text-sm">check_circle</span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   // Ensure Location is filled when entering Step 3 if CEP provided
   useEffect(() => {
@@ -88,15 +134,13 @@ const GeneratorSignup: React.FC<GeneratorSignupProps> = ({ onComplete }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("🚀 Iniciando submissão do formulário...", formData);
     setIsSubmitting(true);
 
     try {
-      if (formData.email !== formData.confirmEmail) {
-        throw new Error('Os e-mails informados não coincidem.');
-      }
-      if (formData.password !== formData.confirmPassword) {
-        throw new Error('As senhas informadas não coincidem.');
-      }
+      // Validação Inicial
+      if (formData.email !== formData.confirmEmail) throw new Error('Os e-mails informados não coincidem.');
+      if (formData.password !== formData.confirmPassword) throw new Error('As senhas informadas não coincidem.');
 
       // 1. Sign up user in Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -105,47 +149,57 @@ const GeneratorSignup: React.FC<GeneratorSignupProps> = ({ onComplete }) => {
       });
 
       if (authError) throw authError;
+      if (!authData.user) throw new Error("Erro ao iniciar cadastro. Tente novamente.");
 
-      if (!authData.user) {
-        throw new Error("Erro ao iniciar cadastro. Tente novamente.");
-      }
-
-      if (authData.user) {
-        // 2. Create profile entry
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: authData.user.id,
-            name: formData.contactName,
-            role: UserRole.GENERATOR
-          });
-
-        if (profileError) throw profileError;
-
-        const { error: genError } = await supabase.rpc('create_generator_registry', {
-          p_user_id: authData.user.id,
-          p_name: formData.socialName,
-          p_region: `${formData.locationCity} / ${formData.locationState}`,
-          p_responsible_name: formData.contactName,
-          p_responsible_phone: formData.contactPhone,
-          p_capacity: Number(formData.energyCapacity),
-          p_email: formData.email,
-          p_password: formData.password
+      // 2. Create profile entry
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: authData.user.id,
+          name: formData.contactName,
+          role: UserRole.GENERATOR
         });
 
-        if (genError) throw genError;
+      if (profileError) console.error("Erro ao criar perfil (não fatal):", profileError);
 
-        // 4. Force auto-login callback and redirect
-        // As requested: bypass email validation check on frontend and proceed.
-        // Note: Supabase "Confirm Email" setting must be DISABLED for session to exist.
-        onComplete(formData);
-        navigate('/generator');
+      // 3. Create Generator Registry (RPC)
+      const { error: genError } = await supabase.rpc('create_generator_registry', {
+        p_user_id: authData.user.id,
+        p_name: formData.socialName,
+        p_region: `${formData.locationCity} / ${formData.locationState}`,
+        p_responsible_name: formData.contactName,
+        p_responsible_phone: formData.contactPhone,
+        p_capacity: Number(formData.energyCapacity),
+        p_email: formData.email,
+        p_password: formData.password
+      });
+
+      if (genError) throw genError;
+
+      // 4. Trigger Email Notification via Edge Function (FAIL-SAFE)
+      try {
+        console.log('📧 Tentando enviar e-mail...');
+        // Usamos invoke com tratamento de erro isolado para não propagar throw
+        await supabase.functions.invoke('send-registration-email', {
+          body: { generator: formData }
+        }).then(({ error }) => {
+          if (error) console.error('⚠️ Retorno de erro da Edge Function:', error);
+          else console.log('✅ E-mail disparado via Edge Function.');
+        });
+      } catch (emailErr) {
+        console.error('⚠️ Falha de conexão ao tentar disparar e-mail:', emailErr);
       }
+
+      // 5. Sucesso FINAL (Sempre executado se chegou aqui)
+      alert('Cadastro realizado com sucesso! Em breve nossa equipe entrará em contato.');
+      navigate('/');
+
     } catch (error: any) {
-      console.error("Erro no cadastro:", error);
+      console.error("❌ Erro fatal no cadastro:", error);
       alert(error.message || "Erro ao realizar cadastro.");
     } finally {
       setIsSubmitting(false);
+      console.log('🔚 Processo de submissão finalizado.');
     }
   };
 
@@ -238,7 +292,7 @@ const GeneratorSignup: React.FC<GeneratorSignupProps> = ({ onComplete }) => {
                       className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-5 outline-none focus:ring-4 ring-primary/10 font-bold text-brand-navy transition-all"
                       placeholder="Ex: Alexandre de Souza"
                       value={formData.contactName}
-                      onChange={e => setFormData({ ...formData, contactName: e.target.value })}
+                      onChange={e => setFormData({ ...formData, contactName: normalizeText(e.target.value) })}
                     />
                   </div>
                   <div>
@@ -248,7 +302,7 @@ const GeneratorSignup: React.FC<GeneratorSignupProps> = ({ onComplete }) => {
                       className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-5 outline-none focus:ring-4 ring-primary/10 font-bold text-brand-navy transition-all"
                       placeholder="(00) 00000-0000"
                       value={formData.contactPhone}
-                      onChange={e => setFormData({ ...formData, contactPhone: e.target.value })}
+                      onChange={e => setFormData({ ...formData, contactPhone: maskPhone(e.target.value) })}
                     />
                   </div>
 
@@ -286,17 +340,17 @@ const GeneratorSignup: React.FC<GeneratorSignupProps> = ({ onComplete }) => {
                         className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 outline-none focus:ring-4 ring-primary/10 font-bold text-brand-navy"
                         placeholder="Ex: Usina Fotovoltaica Sol LTDA"
                         value={formData.socialName}
-                        onChange={e => setFormData({ ...formData, socialName: e.target.value })}
+                        onChange={e => setFormData({ ...formData, socialName: normalizeText(e.target.value) })}
                       />
                     </div>
                     <div>
                       <label className="block text-[10px] font-black text-brand-slate uppercase tracking-widest mb-3">CNPJ</label>
                       <input
                         required
-                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 outline-none focus:ring-4 ring-primary/10 font-bold text-brand-navy"
+                        className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 outline-none focus:ring-4 ring-primary/10 font-bold text-brand-navy text-sm"
                         placeholder="00.000.000/0000-00"
                         value={formData.cnpj}
-                        onChange={e => setFormData({ ...formData, cnpj: e.target.value })}
+                        onChange={e => setFormData({ ...formData, cnpj: maskCNPJ(e.target.value) })}
                       />
                     </div>
                     <div className="relative">
@@ -307,18 +361,13 @@ const GeneratorSignup: React.FC<GeneratorSignupProps> = ({ onComplete }) => {
                         placeholder="00000-000"
                         maxLength={9}
                         value={formData.cep}
-                        onChange={e => setFormData({ ...formData, cep: e.target.value })}
+                        onChange={e => setFormData({ ...formData, cep: maskCEP(e.target.value) })}
                       />
                       {isLoadingCep && (
                         <div className="absolute right-4 bottom-4 size-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
                       )}
                     </div>
-                    {formData.address && (
-                      <div className="md:col-span-2 p-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                        <p className="text-[9px] font-black text-brand-slate uppercase tracking-widest mb-1">Endereço Identificado</p>
-                        <p className="text-xs font-bold text-brand-navy">{formData.address} - {formData.locationCity}/{formData.locationState}</p>
-                      </div>
-                    )}
+                    <AddressInfo />
                   </div>
 
                   <div className="p-8 bg-slate-50 rounded-[2rem] border border-slate-100 space-y-4">
@@ -359,9 +408,12 @@ const GeneratorSignup: React.FC<GeneratorSignupProps> = ({ onComplete }) => {
                     </div>
                   </div>
 
+                  {(formData.email !== formData.confirmEmail || formData.password !== formData.confirmPassword) && (
+                    <p className="text-red-500 text-[10px] font-bold text-center pt-2 uppercase tracking-wide">Os e-mails ou senhas não conferem.</p>
+                  )}
                   <div className="flex gap-4 pt-4">
                     <button type="button" onClick={handleBack} className="flex-1 bg-slate-100 text-brand-navy py-5 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-colors">Voltar</button>
-                    <button type="button" onClick={handleNext} disabled={!formData.socialName || !formData.cnpj || !formData.email || !formData.password} className="flex-1 btn-startpro text-white py-5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl disabled:opacity-30">Continuar</button>
+                    <button type="button" onClick={handleNext} disabled={!formData.socialName || !formData.cnpj || !formData.email || !formData.password || formData.email !== formData.confirmEmail || formData.password !== formData.confirmPassword} className="flex-1 btn-startpro text-white py-5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl disabled:opacity-30">Continuar</button>
                   </div>
                 </div>
               </div>
@@ -395,7 +447,7 @@ const GeneratorSignup: React.FC<GeneratorSignupProps> = ({ onComplete }) => {
                         className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-5 outline-none focus:ring-4 ring-primary/10 font-bold text-brand-navy"
                         placeholder="Ex: MG"
                         value={formData.locationState}
-                        onChange={e => setFormData({ ...formData, locationState: e.target.value })}
+                        onChange={e => setFormData({ ...formData, locationState: normalizeText(e.target.value) })}
                       />
                     </div>
                     <div>
@@ -405,7 +457,7 @@ const GeneratorSignup: React.FC<GeneratorSignupProps> = ({ onComplete }) => {
                         className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-5 outline-none focus:ring-4 ring-primary/10 font-bold text-brand-navy"
                         placeholder="Ex: Juiz de Fora"
                         value={formData.locationCity}
-                        onChange={e => setFormData({ ...formData, locationCity: e.target.value })}
+                        onChange={e => setFormData({ ...formData, locationCity: normalizeText(e.target.value) })}
                       />
                     </div>
                   </div>

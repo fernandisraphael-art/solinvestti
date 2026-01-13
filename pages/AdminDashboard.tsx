@@ -11,6 +11,7 @@ import { parseBatchData } from '../lib/importHelper';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { maskCurrency, maskPhone, maskCNPJ, parseCurrencyToNumber, normalizeText } from '../lib/masks';
 
 declare global {
   interface Window {
@@ -25,6 +26,7 @@ interface AdminDashboardProps {
   onUpdateGenerator: (id: string, updates: Partial<EnergyProvider>) => void;
   onAddGenerator: (gen: EnergyProvider) => void;
   onBatchAddGenerators: (batch: EnergyProvider[]) => Promise<void>;
+  onActivateAll: () => Promise<void>;
   clients: any[];
   onDeleteClient: (id: string) => void;
   onUpdateClient: (id: string, updates: any) => void;
@@ -41,6 +43,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onUpdateGenerator,
   onAddGenerator,
   onBatchAddGenerators,
+  onActivateAll,
   clients,
   onDeleteClient,
   onUpdateClient,
@@ -456,6 +459,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const sidebarExtra = (
     <div className="pt-8 space-y-4">
       <p className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] mb-4 ml-2">Ferramentas Pro</p>
+
+      <button
+        onClick={() => {
+          navigate('/marketplace');
+        }}
+        className="w-full px-5 py-3 rounded-2xl bg-white/5 text-white border border-white/10 flex items-center gap-3 hover:bg-white/10 transition-all cursor-pointer group"
+      >
+        <span className="material-symbols-outlined text-sm group-hover:scale-110 transition-transform">storefront</span>
+        <span className="text-[10px] font-black uppercase tracking-widest">Ver Marketplace</span>
+      </button>
+
       {!hasApiKey ? (
         <button onClick={handleSelectKey} className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl bg-yellow-500/10 text-yellow-500 border border-yellow-500/20 hover:bg-yellow-500/20 transition-all">
           <span className="material-symbols-outlined text-[20px]">key</span>
@@ -468,6 +482,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </button>
       )}
     </div>
+
   );
 
   const sidebarFooter = (
@@ -685,6 +700,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     accept=".xlsx,.csv,.pdf"
                     className="hidden"
                   />
+                  {/* Activate All Button */}
+                  <button
+                    onClick={() => {
+                      if (confirm('Tem certeza que deseja ativar TODAS as usinas pendentes? Elas aparecerão no Marketplace imediatamente.')) {
+                        onActivateAll();
+                      }
+                    }}
+                    className="px-6 py-3 bg-purple-600/20 border border-purple-500/30 text-purple-400 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-purple-600/30 transition-all flex items-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-sm">done_all</span> Ativar Tudo
+                  </button>
+
                   <button
                     onClick={() => manualUploadRef.current?.click()}
                     className="px-6 py-3 bg-white/5 border border-white/10 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-2"
@@ -698,14 +725,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <table className="w-full text-left">
                   <thead className="bg-white/5 border-b border-white/10">
                     <tr>
-                      <th className="px-2 py-4 text-[9px] font-black uppercase text-white/50 tracking-[0.2em]">Usina / Empresa</th>
-                      <th className="px-2 py-4 text-[9px] font-black uppercase text-white/50 tracking-[0.2em]">Contato</th>
-                      <th className="px-2 py-4 text-[9px] font-black uppercase text-white/50 tracking-[0.2em]">Local</th>
-                      <th className="px-2 py-4 text-[9px] font-black uppercase text-white/50 tracking-[0.2em]">Email / Site</th>
-                      <th className="px-2 py-4 text-[9px] font-black uppercase text-white/50 tracking-[0.2em]">Capacidade</th>
-                      <th className="px-2 py-4 text-[9px] font-black uppercase text-white/50 tracking-[0.2em]">Comercial</th>
-                      <th className="px-2 py-4 text-[9px] font-black uppercase text-white/50 tracking-[0.2em]">Status</th>
-                      <th className="px-2 py-4 text-[9px] font-black uppercase text-white/50 tracking-[0.2em] text-right">Ações</th>
+                      <th className="px-2 py-4 text-[9px] font-black uppercase text-white/50 tracking-[0.2em] w-32">Usina / Empresa</th>
+                      <th className="px-2 py-4 text-[9px] font-black uppercase text-white/50 tracking-[0.2em] w-32">Contato</th>
+                      <th className="px-2 py-4 text-[9px] font-black uppercase text-white/50 tracking-[0.2em] w-24">Local</th>
+                      <th className="px-2 py-4 text-[9px] font-black uppercase text-white/50 tracking-[0.2em] w-40">Email / Site</th>
+                      <th className="px-2 py-4 text-[9px] font-black uppercase text-white/50 tracking-[0.2em] w-20">Cap.</th>
+                      <th className="px-2 py-4 text-[9px] font-black uppercase text-white/50 tracking-[0.2em] w-24">Comercial</th>
+                      <th className="px-2 py-4 text-[9px] font-black uppercase text-white/50 tracking-[0.2em] text-center w-24">Status</th>
+                      <th className="px-2 py-4 text-[9px] font-black uppercase text-white/50 tracking-[0.2em] w-32">Ocupação</th>
+                      <th className="px-2 py-4 text-[9px] font-black uppercase text-white/50 tracking-[0.2em] text-right w-32">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
@@ -747,35 +775,76 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <span className="text-blue-400 font-bold text-[10px]">{gen.commission || 0}% Comm.</span>
                           </div>
                         </td>
-                        <td className="px-2 py-3">
-                          <span className={`px-2 py-1 rounded-full text-[9px] font-black uppercase ${gen.status === 'active' ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/20' : 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/20'}`}>
+                        <td className="px-2 py-3 text-center">
+                          <span className={`px-2 py-1 rounded-full text-[9px] font-black uppercase inline-block ${gen.status === 'active' ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/20' : 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/20'}`}>
                             {gen.status === 'active' ? 'Ativa' : 'Pendente'}
                           </span>
                         </td>
+                        <td className="px-2 py-3">
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-bold text-white">
+                                {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format((gen as any).currentOccupancy || 0)} MW
+                              </span>
+                              {(gen as any).isFull && (
+                                <span className="material-symbols-outlined text-orange-500 text-sm animate-pulse" title="Capacidade Esgotada">warning</span>
+                              )}
+                            </div>
+                            <div className="w-24 h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5">
+                              <div
+                                className={`h-full transition-all duration-500 ${(gen as any).isFull ? 'bg-orange-500' : 'bg-primary'}`}
+                                style={{ width: `${Math.min(100, (((gen as any).currentOccupancy || 0) / (Number(gen.capacity) || 1)) * 100)}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-[8px] text-white/30 font-black uppercase tracking-widest">
+                              Cap: {new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(Number(gen.capacity) || 0)} MW
+                            </span>
+                          </div>
+                        </td>
                         <td className="px-2 py-3 text-right">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-1">
                             <button
-                              onClick={() => onToggleStatus(gen.id, gen.status || 'pending')}
-                              className={`font-black text-[10px] uppercase tracking-widest hover:underline flex items-center gap-1 ${gen.status === 'active' ? 'text-red-400' : 'text-emerald-400'
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onToggleStatus(gen.id, gen.status || 'pending');
+                              }}
+                              className={`p-2 rounded-lg transition-colors ${gen.status === 'active' ? 'text-emerald-400 hover:bg-emerald-400/10' : 'text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10'
                                 }`}
+                              title={gen.status === 'active' ? 'Clique para Desativar' : 'Clique para Ativar (Publicar)'}
                             >
-                              <span className="material-symbols-outlined text-[18px]">
-                                {gen.status === 'active' ? 'block' : 'check_circle'}
+                              <span className="material-symbols-outlined text-[20px]">
+                                {gen.status === 'active' ? 'check_circle' : 'unpublished'}
                               </span>
                             </button>
-                            <button onClick={() => setEditingGenerator(gen)} className="text-white/30 hover:text-white transition-colors" title="Editar">
-                              <span className="material-symbols-outlined text-[18px]">edit</span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                console.log('DEBUG: Clique capturado em EDITAR usina:', gen.id);
+                                setEditingGenerator(gen);
+                              }}
+                              className="p-3 rounded-xl text-white hover:bg-white/10 transition-colors shadow-lg active:scale-95"
+                              title="Editar"
+                            >
+                              <span className="material-symbols-outlined text-[24px]">edit</span>
                             </button>
                             <button
-                              onClick={() => {
-                                if (window.confirm('Tem certeza que deseja excluir esta usina? Esta ação não pode ser desfeita.')) {
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                console.log('DEBUG: Clique capturado em EXCLUIR usina:', gen.id);
+                                if (window.confirm(`Deseja realmente EXCLUIR a usina "${gen.name}"? Esta ação é irreversível.`)) {
                                   onDeleteGenerator(gen.id);
                                 }
                               }}
-                              className="text-white/30 hover:text-red-500 transition-colors"
+                              className="p-3 rounded-xl text-red-500 hover:bg-red-500/10 transition-colors shadow-lg active:scale-95"
                               title="Excluir"
                             >
-                              <span className="material-symbols-outlined text-[18px]">delete</span>
+                              <span className="material-symbols-outlined text-[24px]">delete</span>
                             </button>
                           </div>
                         </td>
@@ -834,92 +903,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             </span>
                           </td>
                           <td className="px-10 py-8">
-                            <button className="text-white/30 hover:text-white transition-colors">
-                              <span className="material-symbols-outlined text-sm">edit</span>
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'clients' && (
-            <div className="space-y-10 animate-in fade-in duration-500">
-              <div className="bg-brand-navy/60 border border-white/10 rounded-[3rem] overflow-hidden shadow-2xl">
-                <table className="w-full text-left">
-                  <thead className="bg-white/5 border-b border-white/10">
-                    <tr>
-                      <th className="px-10 py-6 text-[10px] font-black uppercase text-white/50 tracking-[0.2em]">Cliente</th>
-                      <th className="px-10 py-6 text-[10px] font-black uppercase text-white/50 tracking-[0.2em]">Fatura</th>
-                      <th className="px-10 py-6 text-[10px] font-black uppercase text-white/50 tracking-[0.2em]">Status</th>
-                      <th className="px-10 py-6 text-[10px] font-black uppercase text-white/50 tracking-[0.2em]">Doc. Fatura</th>
-                      <th className="px-10 py-6 text-[10px] font-black uppercase text-white/50 tracking-[0.2em]">Data Adesão</th>
-                      <th className="px-10 py-6 text-[10px] font-black uppercase text-white/50 tracking-[0.2em]">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {clients.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="px-10 py-20 text-center text-white/20 text-xs font-black uppercase tracking-widest">Nenhum cliente registrado</td>
-                      </tr>
-                    ) : (
-                      clients.map((client) => (
-                        <tr
-                          key={client.id}
-                          className="hover:bg-white/5 transition-colors cursor-help"
-                          onClick={() => {
-                            console.log('DEBUG: TR CLICADA para cliente:', client.name);
-                            alert(`DEBUG: Você clicou NA LINHA do cliente ${client.name}. O botão de excluir está funcionando?`);
-                          }}
-                        >
-                          <td className="px-10 py-8">
-                            <p className="font-black text-sm text-white">{client.name}</p>
-                            <p className="text-[10px] text-white/40">{client.email}</p>
-                          </td>
-                          <td className="px-10 py-8 font-display font-black text-white text-lg">R$ {Number(client.billValue).toLocaleString('pt-BR')}</td>
-                          <td className="px-10 py-8">
-                            <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase border ${client.status === 'Fatura Enviada' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-primary/20 text-primary border-primary/20'}`}>
-                              {client.status}
-                            </span>
-                          </td>
-                          <td className="px-10 py-8">
-                            {client.energyBill ? (
-                              <button
-                                onClick={() => handleViewDoc(client.energyBill)}
-                                className="flex items-center gap-2 text-primary hover:text-white transition-colors text-[10px] font-black uppercase tracking-widest group"
-                              >
-                                <span className="material-symbols-outlined text-[18px] group-hover:scale-110 transition-transform">description</span>
-                                Ver Fatura
-                              </button>
-                            ) : (
-                              <span className="text-white/20 text-[9px] font-black uppercase">Não enviada</span>
-                            )}
-                          </td>
-                          <td className="px-10 py-8 text-[10px] font-black text-white/30">{client.date}</td>
-                          <td className="px-10 py-8">
                             <div className="flex gap-4">
-                              <button onClick={() => setEditingClient(client)} className="text-white/30 hover:text-white transition-colors" title="Editar / Ver Senha">
-                                <span className="material-symbols-outlined text-[20px]">edit</span>
-                              </button>
                               <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  console.log('DEBUG: Botão excluir clicado para cliente:', client.id, client.name);
-                                  alert(`DEBUG: Click capturado para ${client.name}. ID: ${client.id}`);
-                                  if (window.confirm(`Tem certeza que deseja excluir o cliente "${client.name}"?`)) {
-                                    console.log('DEBUG: Confirmação aceita. Chamando onDeleteClient...');
-                                    onDeleteClient(client.id);
-                                  }
-                                }}
-                                className="text-white/30 hover:text-red-500 transition-colors relative z-10"
-                                style={{ pointerEvents: 'auto', cursor: 'pointer' }}
-                                title="Excluir"
+                                onClick={() => onUpdateConcessionaire(con.id, { status: con.status === 'active' ? 'inactive' : 'active' })}
+                                className="text-white/30 hover:text-white transition-colors"
+                                title={con.status === 'active' ? 'Desativar' : 'Ativar'}
                               >
-                                <span className="material-symbols-outlined text-[20px]">delete</span>
+                                <span className="material-symbols-outlined text-[20px]">{con.status === 'active' ? 'visibility_off' : 'visibility'}</span>
                               </button>
                             </div>
                           </td>
@@ -932,537 +922,650 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
           )}
 
-          {activeTab === 'suppliers_prospect' && (
-            <div className="space-y-8 animate-in fade-in duration-700 pb-20">
-              {/* Header Minimalista */}
-              <div className="flex flex-col items-center text-center max-w-2xl mx-auto pt-10">
-                <div className="mb-6 p-4 bg-primary/10 rounded-full border border-primary/20 shadow-[0_0_40px_rgba(16,185,129,0.2)]">
-                  <span className="material-symbols-outlined text-4xl text-primary">psychology</span>
+          {
+            activeTab === 'clients' && (
+              <div className="space-y-10 animate-in fade-in duration-500">
+                <div className="bg-brand-navy/60 border border-white/10 rounded-[3rem] overflow-hidden shadow-2xl">
+                  <table className="w-full text-left">
+                    <thead className="bg-white/5 border-b border-white/10">
+                      <tr>
+                        <th className="px-10 py-6 text-[10px] font-black uppercase text-white/50 tracking-[0.2em]">Cliente</th>
+                        <th className="px-10 py-6 text-[10px] font-black uppercase text-white/50 tracking-[0.2em] w-32 text-center">Fatura</th>
+                        <th className="px-10 py-6 text-[10px] font-black uppercase text-white/50 tracking-[0.2em] text-center w-32">Status</th>
+                        <th className="px-10 py-6 text-[10px] font-black uppercase text-white/50 tracking-[0.2em] text-center w-40">Doc. Fatura</th>
+                        <th className="px-10 py-6 text-[10px] font-black uppercase text-white/50 tracking-[0.2em] text-center w-32">Data</th>
+                        <th className="px-10 py-6 text-[10px] font-black uppercase text-white/50 tracking-[0.2em] text-right w-32">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {clients.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-10 py-20 text-center text-white/20 text-xs font-black uppercase tracking-widest">Nenhum cliente registrado</td>
+                        </tr>
+                      ) : (
+                        clients.map((client) => (
+                          <tr
+                            key={client.id}
+                            className="hover:bg-white/5 transition-colors"
+                          >
+                            <td className="px-10 py-8">
+                              <p className="font-black text-sm text-white">{client.name}</p>
+                              <p className="text-[10px] text-white/40">{client.email}</p>
+                            </td>
+                            <td className="px-10 py-8 font-display font-black text-white text-lg">R$ {Number(client.billValue).toLocaleString('pt-BR')}</td>
+                            <td className="px-10 py-8">
+                              <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase border ${client.status === 'Fatura Enviada' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-primary/20 text-primary border-primary/20'}`}>
+                                {client.status}
+                              </span>
+                            </td>
+                            <td className="px-10 py-8">
+                              {client.energyBill ? (
+                                <button
+                                  onClick={() => handleViewDoc(client.energyBill)}
+                                  className="flex items-center gap-2 text-primary hover:text-white transition-colors text-[10px] font-black uppercase tracking-widest group"
+                                >
+                                  <span className="material-symbols-outlined text-[18px] group-hover:scale-110 transition-transform">description</span>
+                                  Ver Fatura
+                                </button>
+                              ) : (
+                                <span className="text-white/20 text-[9px] font-black uppercase">Não enviada</span>
+                              )}
+                            </td>
+                            <td className="px-10 py-8 text-[10px] font-black text-white/30">{client.date}</td>
+                            <td className="px-10 py-8 text-right w-32">
+                              <div className="flex justify-end gap-1">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    console.log('DEBUG: Clique capturado em EDITAR cliente:', client.id);
+                                    setEditingClient(client);
+                                  }}
+                                  className="p-3 rounded-xl text-white hover:bg-white/10 transition-colors shadow-lg active:scale-95"
+                                  title="Editar / Ver Senha"
+                                >
+                                  <span className="material-symbols-outlined text-[24px]">edit</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    console.log('DEBUG: Clique capturado em EXCLUIR cliente:', client.id);
+                                    if (window.confirm(`Tem certeza que deseja excluir o cliente "${client.name}"?`)) {
+                                      onDeleteClient(client.id);
+                                    }
+                                  }}
+                                  className="p-3 rounded-xl text-red-500 hover:bg-red-500/10 transition-colors shadow-lg active:scale-95"
+                                  title="Excluir"
+                                >
+                                  <span className="material-symbols-outlined text-[24px]">delete</span>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
-                <h3 className="text-5xl font-display font-black text-white uppercase tracking-tight mb-4">
-                  Prospector <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-300">AI</span>
-                </h3>
-                <p className="text-white/50 text-lg font-medium leading-relaxed">
-                  Localize usinas solares ativas utilizando o poder do Web Grounding do Google Gemini.
-                </p>
               </div>
+            )
+          }
 
-              {/* Barra de Busca Central */}
-              <div className="max-w-3xl mx-auto relative group">
-                <div className="absolute -inset-1 bg-gradient-to-r from-primary via-emerald-400 to-teal-500 rounded-[2rem] opacity-30 group-hover:opacity-60 blur-xl transition-all duration-500"></div>
-                <div className="relative bg-brand-navy border border-white/20 rounded-[2rem] p-2 flex items-center shadow-2xl">
-                  <span className="material-symbols-outlined text-white/30 text-3xl ml-6">travel_explore</span>
-                  <input
-                    className="flex-1 bg-transparent border-none outline-none text-xl font-bold text-white placeholder:text-white/20 px-6 py-4 h-16"
-                    placeholder="Ex: Usinas Solares em Minas Gerais..."
-                    value={searchRegion}
-                    onChange={e => setSearchRegion(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && !isSearchingWeb && handleSearchWeb()}
-                  />
-                  <button
-                    onClick={handleSearchWeb}
-                    disabled={isSearchingWeb}
-                    className="bg-primary hover:bg-emerald-400 text-brand-navy h-14 px-8 rounded-[1.5rem] font-black uppercase tracking-widest text-sm transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isSearchingWeb ? (
-                      <span className="animate-spin material-symbols-outlined">refresh</span>
-                    ) : (
-                      <>
-                        <span>Buscar</span>
-                        <span className="material-symbols-outlined text-lg">arrow_forward</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Loading State Criativo */}
-              {isSearchingWeb && (
-                <div className="max-w-2xl mx-auto mt-12 text-center space-y-4">
-                  <div className="flex justify-center gap-2">
-                    <div className="w-3 h-3 bg-primary rounded-full animate-bounce delay-0"></div>
-                    <div className="w-3 h-3 bg-emerald-400 rounded-full animate-bounce delay-100"></div>
-                    <div className="w-3 h-3 bg-teal-500 rounded-full animate-bounce delay-200"></div>
+          {
+            activeTab === 'suppliers_prospect' && (
+              <div className="space-y-8 animate-in fade-in duration-700 pb-20">
+                {/* Header Minimalista */}
+                <div className="flex flex-col items-center text-center max-w-2xl mx-auto pt-10">
+                  <div className="mb-6 p-4 bg-primary/10 rounded-full border border-primary/20 shadow-[0_0_40px_rgba(16,185,129,0.2)]">
+                    <span className="material-symbols-outlined text-4xl text-primary">psychology</span>
                   </div>
-                  <p className="text-white/40 font-mono text-sm animate-pulse">Analisando dados via satélite e bases regulatórias...</p>
+                  <h3 className="text-5xl font-display font-black text-white uppercase tracking-tight mb-4">
+                    Prospector <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-emerald-300">AI</span>
+                  </h3>
+                  <p className="text-white/50 text-lg font-medium leading-relaxed">
+                    Localize usinas solares ativas utilizando o poder do Web Grounding do Google Gemini.
+                  </p>
                 </div>
-              )}
 
-              {/* Resultados */}
-              {candidateSuppliers.length > 0 && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16 px-4">
-                  {candidateSuppliers.map((cand, i) => (
-                    <div key={i} className="group bg-white/5 hover:bg-white/10 border border-white/10 hover:border-primary/50 p-8 rounded-[2.5rem] flex flex-col transition-all duration-300 hover:-translate-y-2 relative overflow-hidden">
-                      <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
-                        <span className="material-symbols-outlined text-6xl text-white">solar_power</span>
-                      </div>
+                {/* Barra de Busca Central */}
+                <div className="max-w-3xl mx-auto relative group">
+                  <div className="absolute -inset-1 bg-gradient-to-r from-primary via-emerald-400 to-teal-500 rounded-[2rem] opacity-30 group-hover:opacity-60 blur-xl transition-all duration-500"></div>
+                  <div className="relative bg-brand-navy border border-white/20 rounded-[2rem] p-2 flex items-center shadow-2xl">
+                    <span className="material-symbols-outlined text-white/30 text-3xl ml-6">travel_explore</span>
+                    <input
+                      className="flex-1 bg-transparent border-none outline-none text-xl font-bold text-white placeholder:text-white/20 px-6 py-4 h-16"
+                      placeholder="Ex: Usinas Solares em Minas Gerais..."
+                      value={searchRegion}
+                      onChange={e => setSearchRegion(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && !isSearchingWeb && handleSearchWeb()}
+                    />
+                    <button
+                      onClick={handleSearchWeb}
+                      disabled={isSearchingWeb}
+                      className="bg-primary hover:bg-emerald-400 text-brand-navy h-14 px-8 rounded-[1.5rem] font-black uppercase tracking-widest text-sm transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSearchingWeb ? (
+                        <span className="animate-spin material-symbols-outlined">refresh</span>
+                      ) : (
+                        <>
+                          <span>Buscar</span>
+                          <span className="material-symbols-outlined text-lg">arrow_forward</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
 
-                      <div className="mb-6">
-                        <span className="inline-block px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase tracking-widest border border-emerald-500/20 mb-3">
-                          Alta Relevância
-                        </span>
-                        <h5 className="text-xl font-display font-black text-white leading-tight">{cand.nome}</h5>
-                      </div>
-
-                      <div className="space-y-4 mb-8 flex-1">
-                        <div className="flex items-start gap-3">
-                          <span className="material-symbols-outlined text-white/30 text-lg mt-0.5">location_on</span>
-                          <p className="text-sm text-white/70 font-medium">{cand.localizacao}</p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="material-symbols-outlined text-white/30 text-lg">person</span>
-                          <p className="text-sm text-white/70 font-medium">{cand.responsavel}</p>
-                        </div>
-                        {cand.telefone !== '---' && (
-                          <div className="flex items-center gap-3">
-                            <span className="material-symbols-outlined text-white/30 text-lg">call</span>
-                            <p className="text-sm text-primary font-bold">{cand.telefone}</p>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="pt-6 border-t border-white/5 flex items-center justify-between gap-4">
-                        <div className="flex flex-col">
-                          <span className="text-[9px] text-white/30 font-black uppercase tracking-wider">Desconto Est.</span>
-                          <span className="text-2xl font-display font-black text-white">{cand.desconto_estimado}%</span>
-                        </div>
-                        <button
-                          onClick={() => activateCandidate(cand)}
-                          className="px-6 py-3 bg-white/10 hover:bg-primary hover:text-brand-navy rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"
-                        >
-                          Homologar
-                        </button>
-                      </div>
+                {/* Loading State Criativo */}
+                {isSearchingWeb && (
+                  <div className="max-w-2xl mx-auto mt-12 text-center space-y-4">
+                    <div className="flex justify-center gap-2">
+                      <div className="w-3 h-3 bg-primary rounded-full animate-bounce delay-0"></div>
+                      <div className="w-3 h-3 bg-emerald-400 rounded-full animate-bounce delay-100"></div>
+                      <div className="w-3 h-3 bg-teal-500 rounded-full animate-bounce delay-200"></div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </main>
+                    <p className="text-white/40 font-mono text-sm animate-pulse">Analisando dados via satélite e bases regulatórias...</p>
+                  </div>
+                )}
+
+                {/* Resultados */}
+                {candidateSuppliers.length > 0 && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-16 px-4">
+                    {candidateSuppliers.map((cand, i) => (
+                      <div key={i} className="group bg-white/5 hover:bg-white/10 border border-white/10 hover:border-primary/50 p-8 rounded-[2.5rem] flex flex-col transition-all duration-300 hover:-translate-y-2 relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:opacity-20 transition-opacity">
+                          <span className="material-symbols-outlined text-6xl text-white">solar_power</span>
+                        </div>
+
+                        <div className="mb-6">
+                          <span className="inline-block px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase tracking-widest border border-emerald-500/20 mb-3">
+                            Alta Relevância
+                          </span>
+                          <h5 className="text-xl font-display font-black text-white leading-tight">{cand.nome}</h5>
+                        </div>
+
+                        <div className="space-y-4 mb-8 flex-1">
+                          <div className="flex items-start gap-3">
+                            <span className="material-symbols-outlined text-white/30 text-lg mt-0.5">location_on</span>
+                            <p className="text-sm text-white/70 font-medium">{cand.localizacao}</p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="material-symbols-outlined text-white/30 text-lg">person</span>
+                            <p className="text-sm text-white/70 font-medium">{cand.responsavel}</p>
+                          </div>
+                          {cand.telefone !== '---' && (
+                            <div className="flex items-center gap-3">
+                              <span className="material-symbols-outlined text-white/30 text-lg">call</span>
+                              <p className="text-sm text-primary font-bold">{cand.telefone}</p>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="pt-6 border-t border-white/5 flex items-center justify-between gap-4">
+                          <div className="flex flex-col">
+                            <span className="text-[9px] text-white/30 font-black uppercase tracking-wider">Desconto Est.</span>
+                            <span className="text-2xl font-display font-black text-white">{cand.desconto_estimado}%</span>
+                          </div>
+                          <button
+                            onClick={() => activateCandidate(cand)}
+                            className="px-6 py-3 bg-white/10 hover:bg-primary hover:text-brand-navy rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"
+                          >
+                            Homologar
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          }
+        </div >
+      </main >
 
       {/* MODAL: NOVA CONCESSIONÁRIA */}
-      {isConModalOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-xl p-6">
-          <div className="bg-brand-navy w-full max-w-lg p-12 rounded-[3.5rem] border border-white/20 animate-in zoom-in-95 duration-300">
-            <h3 className="text-3xl font-display font-black mb-8 uppercase tracking-tight">Nova Distribuidora</h3>
-            <form onSubmit={handleAddCon} className="space-y-6">
-              <div>
-                <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Nome da Concessionária</label>
-                <input className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-white outline-none focus:ring-4 ring-primary/20 font-bold" value={newCon.name} onChange={e => setNewCon({ ...newCon, name: e.target.value })} required />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+      {
+        isConModalOpen && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-xl p-6">
+            <div className="bg-brand-navy w-full max-w-lg p-12 rounded-[3.5rem] border border-white/20 animate-in zoom-in-95 duration-300">
+              <h3 className="text-3xl font-display font-black mb-8 uppercase tracking-tight">Nova Distribuidora</h3>
+              <form onSubmit={handleAddCon} className="space-y-6">
                 <div>
-                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Região/UF</label>
-                  <input className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-white outline-none font-bold" value={newCon.region} onChange={e => setNewCon({ ...newCon, region: e.target.value })} placeholder="Ex: MG" required />
+                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Nome da Concessionária</label>
+                  <input className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-white outline-none focus:ring-4 ring-primary/20 font-bold" value={newCon.name} onChange={e => setNewCon({ ...newCon, name: normalizeText(e.target.value) })} required />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Região/UF</label>
+                    <input className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-white outline-none font-bold" value={newCon.region} onChange={e => setNewCon({ ...newCon, region: normalizeText(e.target.value) })} placeholder="Ex: MG" required />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Gestor Resp.</label>
+                    <input className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-white outline-none font-bold" value={newCon.responsible} onChange={e => setNewCon({ ...newCon, responsible: normalizeText(e.target.value) })} required />
+                  </div>
                 </div>
                 <div>
-                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Gestor Resp.</label>
-                  <input className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-white outline-none font-bold" value={newCon.responsible} onChange={e => setNewCon({ ...newCon, responsible: e.target.value })} required />
+                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Contato Direto</label>
+                  <input className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-white outline-none font-bold" value={newCon.contact} onChange={e => setNewCon({ ...newCon, contact: maskPhone(e.target.value) })} placeholder="(00) 00000-0000" required />
                 </div>
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Contato Direto</label>
-                <input className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 text-white outline-none font-bold" value={newCon.contact} onChange={e => setNewCon({ ...newCon, contact: e.target.value })} placeholder="(00) 00000-0000" required />
-              </div>
-              <div className="flex gap-4 pt-6">
-                <button type="button" onClick={() => setIsConModalOpen(false)} className="flex-1 py-5 text-white/40 font-black uppercase tracking-widest">Cancelar</button>
-                <button type="submit" className="flex-1 bg-primary text-brand-navy py-5 rounded-2xl font-black uppercase tracking-widest shadow-xl">Registrar</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL: RESET SISTEMA */}
-      {isResetModalOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-xl">
-          <div className="bg-brand-navy p-12 rounded-[3.5rem] border border-white/20 max-w-md text-center">
-            <span className="material-symbols-outlined text-6xl text-red-500 mb-6">warning</span>
-            <h3 className="text-3xl font-display font-black mb-4">Resetar Dados?</h3>
-            <p className="text-white/60 mb-10 leading-relaxed font-medium">Faça backup ou limpe os dados do sistema. A limpeza exige senha de administrador.</p>
-            <div className="flex gap-4">
-              <button
-                onClick={handleBackup}
-                disabled={isBackupLoading}
-                className="flex-1 py-5 border border-white/10 rounded-2xl text-white/60 hover:text-white hover:bg-white/5 font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2"
-              >
-                {isBackupLoading ? 'Salvando...' : (
-                  <>
-                    <span className="material-symbols-outlined text-lg">download</span> Backup
-                  </>
-                )}
-              </button>
-              <button
-                onClick={startSecureReset}
-                className="flex-1 bg-red-500 hover:bg-red-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2"
-              >
-                <span className="material-symbols-outlined text-lg">delete_forever</span> Resetar
-              </button>
+                <div className="flex gap-4 pt-6">
+                  <button type="button" onClick={() => setIsConModalOpen(false)} className="flex-1 py-5 text-white/40 font-black uppercase tracking-widest">Cancelar</button>
+                  <button type="submit" className="flex-1 bg-primary text-brand-navy py-5 rounded-2xl font-black uppercase tracking-widest shadow-xl">Registrar</button>
+                </div>
+              </form>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
+
+      {/* MODAL: RESET SISTEMA */}
+      {
+        isResetModalOpen && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-xl">
+            <div className="bg-brand-navy p-12 rounded-[3.5rem] border border-white/20 max-w-md text-center">
+              <span className="material-symbols-outlined text-6xl text-red-500 mb-6">warning</span>
+              <h3 className="text-3xl font-display font-black mb-4">Resetar Dados?</h3>
+              <p className="text-white/60 mb-10 leading-relaxed font-medium">Faça backup ou limpe os dados do sistema. A limpeza exige senha de administrador.</p>
+              <div className="flex gap-4">
+                <button
+                  onClick={handleBackup}
+                  disabled={isBackupLoading}
+                  className="flex-1 py-5 border border-white/10 rounded-2xl text-white/60 hover:text-white hover:bg-white/5 font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+                >
+                  {isBackupLoading ? 'Salvando...' : (
+                    <>
+                      <span className="material-symbols-outlined text-lg">download</span> Backup
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={startSecureReset}
+                  className="flex-1 bg-red-500 hover:bg-red-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-lg">delete_forever</span> Resetar
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      }
 
       {/* MODAL: SECURE RESET */}
-      {isResetModalOpen && resetStep !== 'idle' && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-brand-deep/90 backdrop-blur-xl">
-          <div className="w-full max-w-md bg-brand-navy rounded-[3.5rem] border border-white/20 shadow-2xl p-12 text-center animate-in zoom-in-95">
+      {
+        isResetModalOpen && resetStep !== 'idle' && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-brand-deep/90 backdrop-blur-xl">
+            <div className="w-full max-w-md bg-brand-navy rounded-[3.5rem] border border-white/20 shadow-2xl p-12 text-center animate-in zoom-in-95">
 
-            {resetStep === 'create' && !generatedRecoveryKey && (
-              <>
-                <span className="material-symbols-outlined text-5xl text-primary mb-6">lock_reset</span>
-                <h3 className="text-2xl font-display font-black text-white mb-4">Criar Senha Admin</h3>
-                <p className="text-white/60 mb-8 text-sm">Defina uma senha única para proteger a limpeza de dados.</p>
-                <input
-                  type="password"
-                  placeholder="Nova Senha"
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white font-bold outline-none mb-6 text-center"
-                  value={adminPasswordInput}
-                  onChange={e => setAdminPasswordInput(e.target.value)}
-                />
-                <button onClick={handleCreatePassword} className="w-full bg-primary text-brand-navy py-4 rounded-2xl font-black uppercase tracking-widest">Criar Senha</button>
-              </>
-            )}
+              {resetStep === 'create' && !generatedRecoveryKey && (
+                <>
+                  <span className="material-symbols-outlined text-5xl text-primary mb-6">lock_reset</span>
+                  <h3 className="text-2xl font-display font-black text-white mb-4">Criar Senha Admin</h3>
+                  <p className="text-white/60 mb-8 text-sm">Defina uma senha única para proteger a limpeza de dados.</p>
+                  <input
+                    type="password"
+                    placeholder="Nova Senha"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white font-bold outline-none mb-6 text-center"
+                    value={adminPasswordInput}
+                    onChange={e => setAdminPasswordInput(e.target.value)}
+                  />
+                  <button onClick={handleCreatePassword} className="w-full bg-primary text-brand-navy py-4 rounded-2xl font-black uppercase tracking-widest">Criar Senha</button>
+                </>
+              )}
 
-            {generatedRecoveryKey && (
-              <>
-                <span className="material-symbols-outlined text-5xl text-emerald-400 mb-6">key</span>
-                <h3 className="text-2xl font-display font-black text-white mb-4">Chave de Recuperação</h3>
-                <p className="text-white/60 mb-6 text-sm">Guarde esta chave em local seguro. Ela é a **única forma** de recuperar o acesso se esquecer a senha.</p>
-                <div className="bg-white/10 p-4 rounded-xl text-primary font-mono font-bold text-lg mb-8 break-all select-all">
-                  {generatedRecoveryKey}
-                </div>
-                <button onClick={() => { setGeneratedRecoveryKey(''); setResetStep('auth'); }} className="w-full bg-white/10 text-white py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-white/20">Entendido, Continuar</button>
-              </>
-            )}
+              {generatedRecoveryKey && (
+                <>
+                  <span className="material-symbols-outlined text-5xl text-emerald-400 mb-6">key</span>
+                  <h3 className="text-2xl font-display font-black text-white mb-4">Chave de Recuperação</h3>
+                  <p className="text-white/60 mb-6 text-sm">Guarde esta chave em local seguro. Ela é a **única forma** de recuperar o acesso se esquecer a senha.</p>
+                  <div className="bg-white/10 p-4 rounded-xl text-primary font-mono font-bold text-lg mb-8 break-all select-all">
+                    {generatedRecoveryKey}
+                  </div>
+                  <button onClick={() => { setGeneratedRecoveryKey(''); setResetStep('auth'); }} className="w-full bg-white/10 text-white py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-white/20">Entendido, Continuar</button>
+                </>
+              )}
 
-            {resetStep === 'auth' && (
-              <>
-                <span className="material-symbols-outlined text-5xl text-red-500 mb-6">warning</span>
-                <h3 className="text-2xl font-display font-black text-white mb-2">Resetar Dados?</h3>
-                <p className="text-white/60 mb-8 text-sm">Digite sua senha de administrador para confirmar a exclusão TOTAL.</p>
+              {resetStep === 'auth' && (
+                <>
+                  <span className="material-symbols-outlined text-5xl text-red-500 mb-6">warning</span>
+                  <h3 className="text-2xl font-display font-black text-white mb-2">Resetar Dados?</h3>
+                  <p className="text-white/60 mb-8 text-sm">Digite sua senha de administrador para confirmar a exclusão TOTAL.</p>
 
-                <input
-                  type="password"
-                  placeholder="Senha Admin"
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white font-bold outline-none mb-2 text-center"
-                  value={adminPasswordInput}
-                  onChange={e => setAdminPasswordInput(e.target.value)}
-                />
-                {resetError && <p className="text-red-400 text-xs font-bold mb-4">{resetError}</p>}
+                  <input
+                    type="password"
+                    placeholder="Senha Admin"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white font-bold outline-none mb-2 text-center"
+                    value={adminPasswordInput}
+                    onChange={e => setAdminPasswordInput(e.target.value)}
+                  />
+                  {resetError && <p className="text-red-400 text-xs font-bold mb-4">{resetError}</p>}
 
-                <button onClick={handleVerifyAndReset} className="w-full bg-red-500 text-white py-4 rounded-2xl font-black uppercase tracking-widest mb-4">Confirmar Reset</button>
-                <button onClick={() => setResetStep('recovery')} className="text-xs text-white/40 hover:text-white uppercase tracking-widest">Esqueci a Senha</button>
-              </>
-            )}
+                  <button onClick={handleVerifyAndReset} className="w-full bg-red-500 text-white py-4 rounded-2xl font-black uppercase tracking-widest mb-4">Confirmar Reset</button>
+                  <button onClick={() => setResetStep('recovery')} className="text-xs text-white/40 hover:text-white uppercase tracking-widest">Esqueci a Senha</button>
+                </>
+              )}
 
-            {resetStep === 'recovery' && (
-              <>
-                <span className="material-symbols-outlined text-5xl text-amber-400 mb-6">lock_open</span>
-                <h3 className="text-2xl font-display font-black text-white mb-4">Recuperação</h3>
-                <p className="text-white/60 mb-8 text-sm">Digite a chave de recuperação gerada quando você criou a senha.</p>
+              {resetStep === 'recovery' && (
+                <>
+                  <span className="material-symbols-outlined text-5xl text-amber-400 mb-6">lock_open</span>
+                  <h3 className="text-2xl font-display font-black text-white mb-4">Recuperação</h3>
+                  <p className="text-white/60 mb-8 text-sm">Digite a chave de recuperação gerada quando você criou a senha.</p>
 
-                <input
-                  type="text"
-                  placeholder="Chave de Recuperação"
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white font-bold outline-none mb-2 text-center"
-                  value={recoveryKeyInput}
-                  onChange={e => setRecoveryKeyInput(e.target.value)}
-                />
-                {resetError && <p className="text-red-400 text-xs font-bold mb-4">{resetError}</p>}
+                  <input
+                    type="text"
+                    placeholder="Chave de Recuperação"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white font-bold outline-none mb-2 text-center"
+                    value={recoveryKeyInput}
+                    onChange={e => setRecoveryKeyInput(e.target.value)}
+                  />
+                  {resetError && <p className="text-red-400 text-xs font-bold mb-4">{resetError}</p>}
 
-                <button onClick={handleRecovery} className="w-full bg-white/10 text-white py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-white/20 mb-4">Validar e Resetar</button>
-                <button onClick={() => setResetStep('auth')} className="text-xs text-white/40 hover:text-white uppercase tracking-widest">Voltar</button>
-              </>
-            )}
+                  <button onClick={handleRecovery} className="w-full bg-white/10 text-white py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-white/20 mb-4">Validar e Resetar</button>
+                  <button onClick={() => setResetStep('auth')} className="text-xs text-white/40 hover:text-white uppercase tracking-widest">Voltar</button>
+                </>
+              )}
 
-            <button onClick={() => setIsResetModalOpen(false)} className="mt-6 text-white/20 hover:text-white font-black uppercase tracking-widest text-[10px]">Fechar</button>
+              <button onClick={() => setIsResetModalOpen(false)} className="mt-6 text-white/20 hover:text-white font-black uppercase tracking-widest text-[10px]">Fechar</button>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* MODAL: RESET CONFIRMATION OLD (REMOVED) */}
 
 
       {/* MODAL: EDIÇÃO DE USINA */}
-      {editingGenerator && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-brand-deep/90 backdrop-blur-xl">
-          <div className="w-full max-w-[600px] bg-brand-navy rounded-[3.5rem] border border-white/20 shadow-2xl p-14 animate-in zoom-in-95">
-            <h3 className="text-3xl font-display font-black text-white mb-10">Editar Usina Parceira</h3>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              if (editingGenerator.id) {
-                await onUpdateGenerator(editingGenerator.id, editingGenerator);
-                triggerToast('Informações salvas com sucesso.');
-              }
-              setEditingGenerator(null);
-            }} className="space-y-8">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Razão Social / Usina</label>
-                  <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none focus:ring-4 ring-primary/20" value={editingGenerator.name} onChange={e => setEditingGenerator({ ...editingGenerator, name: e.target.value })} />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Empresa Operadora</label>
-                  <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none focus:ring-4 ring-primary/20" value={editingGenerator.company || ''} onChange={e => setEditingGenerator({ ...editingGenerator, company: e.target.value })} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Nome do Responsável</label>
-                  <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingGenerator.responsibleName || ''} onChange={e => setEditingGenerator({ ...editingGenerator, responsibleName: e.target.value })} />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Contato do Responsável</label>
-                  <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingGenerator.responsiblePhone || ''} onChange={e => setEditingGenerator({ ...editingGenerator, responsiblePhone: e.target.value })} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Cidade</label>
-                  <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingGenerator.city || ''} onChange={e => setEditingGenerator({ ...editingGenerator, city: e.target.value })} />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Estado / UF</label>
-                  <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingGenerator.region || ''} onChange={e => setEditingGenerator({ ...editingGenerator, region: e.target.value })} />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Capacidade (kW/MW)</label>
-                  <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingGenerator.capacity || ''} onChange={e => setEditingGenerator({ ...editingGenerator, capacity: e.target.value })} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Desconto (%)</label>
-                  <input type="number" className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingGenerator.discount} onChange={e => setEditingGenerator({ ...editingGenerator, discount: parseInt(e.target.value) || 0 })} />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Comissão (%)</label>
-                  <input type="number" className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingGenerator.commission} onChange={e => setEditingGenerator({ ...editingGenerator, commission: parseInt(e.target.value) || 0 })} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Website / Landing Page</label>
-                  <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingGenerator.website || ''} onChange={e => setEditingGenerator({ ...editingGenerator, website: e.target.value })} />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Faturamento Anual (R$)</label>
-                  <input type="number" className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingGenerator.annualRevenue || 0} onChange={e => setEditingGenerator({ ...editingGenerator, annualRevenue: parseFloat(e.target.value) || 0 })} />
-                </div>
-              </div>
-
-              <div className="mt-auto pt-10 border-t border-white/5">
-                <div className="p-6 bg-gradient-to-br from-primary/10 to-transparent rounded-3xl border border-white/5">
-                  <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-2">Solinvestti Admin</p>
-                  <p className="text-[9px] text-white/40 leading-relaxed font-bold">Versão 2.0.4 - Alpha<br />Debug Deletion Active</p>
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-white/10">
-                <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4">Credenciais de Acesso</h4>
-                <div className="grid grid-cols-2 gap-4">
+      {
+        editingGenerator && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-brand-deep/90 backdrop-blur-xl">
+            <div className="w-full max-w-[600px] bg-brand-navy rounded-[2rem] border border-white/20 shadow-2xl p-8 animate-in zoom-in-95 max-h-[95vh] overflow-y-auto custom-scrollbar">
+              <h3 className="text-xl font-display font-black text-white mb-6">Editar Usina Parceira</h3>
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                if (editingGenerator.id) {
+                  await onUpdateGenerator(editingGenerator.id, editingGenerator);
+                  triggerToast('Informações salvas com sucesso.');
+                }
+                setEditingGenerator(null);
+              }} className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Login (E-mail)</label>
-                    <div className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white font-bold text-sm">
-                      {editingGenerator.accessEmail || 'Não registrado'}
-                    </div>
+                    <label className="text-[9px] font-black text-white/40 uppercase tracking-widest block mb-1">Razão Social / Usina</label>
+                    <input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-bold outline-none text-xs focus:ring-2 ring-primary/20" value={editingGenerator.name} onChange={e => setEditingGenerator({ ...editingGenerator, name: normalizeText(e.target.value) })} />
                   </div>
                   <div>
-                    <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Senha de Acesso</label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        readOnly
-                        value={editingGenerator.accessPassword || ''}
-                        placeholder={editingGenerator.accessPassword ? '' : '(Não salva)'}
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white font-bold text-sm font-mono outline-none pr-12"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-lg">
-                          {showPassword ? 'visibility_off' : 'visibility'}
-                        </span>
-                      </button>
+                    <label className="text-[9px] font-black text-white/40 uppercase tracking-widest block mb-1">Empresa Operadora</label>
+                    <input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-bold outline-none text-xs focus:ring-2 ring-primary/20" value={editingGenerator.company || ''} onChange={e => setEditingGenerator({ ...editingGenerator, company: normalizeText(e.target.value) })} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[9px] font-black text-white/40 uppercase tracking-widest block mb-1">Nome do Responsável</label>
+                    <input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-bold outline-none text-xs" value={editingGenerator.responsibleName || ''} onChange={e => setEditingGenerator({ ...editingGenerator, responsibleName: normalizeText(e.target.value) })} />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-black text-white/40 uppercase tracking-widest block mb-1">Contato do Responsável</label>
+                    <input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-bold outline-none text-xs" value={editingGenerator.responsiblePhone || ''} onChange={e => setEditingGenerator({ ...editingGenerator, responsiblePhone: maskPhone(e.target.value) })} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-[9px] font-black text-white/40 uppercase tracking-widest block mb-1">Cidade</label>
+                    <input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-bold outline-none text-xs" value={editingGenerator.city || ''} onChange={e => setEditingGenerator({ ...editingGenerator, city: normalizeText(e.target.value) })} />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-black text-white/40 uppercase tracking-widest block mb-1">Estado / UF</label>
+                    <input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-bold outline-none text-xs" value={editingGenerator.region || ''} onChange={e => setEditingGenerator({ ...editingGenerator, region: normalizeText(e.target.value) })} />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-black text-white/40 uppercase tracking-widest block mb-1">Capacidade (MW)</label>
+                    <input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-bold outline-none text-xs" value={editingGenerator.capacity || ''} onChange={e => setEditingGenerator({ ...editingGenerator, capacity: e.target.value })} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[9px] font-black text-white/40 uppercase tracking-widest block mb-1">Desconto (%)</label>
+                    <input type="number" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-bold outline-none text-xs" value={editingGenerator.discount} onChange={e => setEditingGenerator({ ...editingGenerator, discount: parseInt(e.target.value) || 0 })} />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-black text-white/40 uppercase tracking-widest block mb-1">Comissão (%)</label>
+                    <input type="number" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-bold outline-none text-xs" value={editingGenerator.commission} onChange={e => setEditingGenerator({ ...editingGenerator, commission: parseInt(e.target.value) || 0 })} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[9px] font-black text-white/40 uppercase tracking-widest block mb-1">Website / Landing Page</label>
+                    <input className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-bold outline-none text-xs" value={editingGenerator.website || ''} onChange={e => setEditingGenerator({ ...editingGenerator, website: e.target.value })} />
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-black text-white/40 uppercase tracking-widest block mb-1">Faturamento Anual (R$)</label>
+                    <input
+                      type="text"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-bold outline-none text-xs"
+                      value={maskCurrency(String(editingGenerator.annualRevenue || 0))}
+                      onChange={e => setEditingGenerator({ ...editingGenerator, annualRevenue: parseCurrencyToNumber(e.target.value) })}
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-white/10">
+                  <h4 className="text-[9px] font-black text-primary uppercase tracking-[0.2em] mb-2">Credenciais de Acesso</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[9px] font-black text-white/40 uppercase tracking-widest block mb-1">Login (E-mail)</label>
+                      <div className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-bold text-xs truncate">
+                        {editingGenerator.accessEmail || 'Não registrado'}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black text-white/40 uppercase tracking-widest block mb-1">Senha de Acesso</label>
+                      <div className="relative">
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          readOnly
+                          value={editingGenerator.accessPassword || ''}
+                          placeholder={editingGenerator.accessPassword ? '' : '(Não salva)'}
+                          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-bold text-xs font-mono outline-none pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-sm">
+                            {showPassword ? 'visibility_off' : 'visibility'}
+                          </span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex gap-6 pt-6">
-                <button type="button" onClick={() => setEditingGenerator(null)} className="flex-1 py-5 text-white/40 font-black uppercase tracking-widest">Descartar</button>
-                <button type="submit" className="flex-1 bg-primary text-brand-navy py-5 rounded-2xl font-black uppercase tracking-widest">Salvar Alterações</button>
-              </div>
-            </form>
-          </div>
-        </div >
-      )}
+                <div className="flex gap-4 pt-4">
+                  <button type="button" onClick={() => setEditingGenerator(null)} className="flex-1 py-3 text-white/40 font-black text-[10px] uppercase tracking-widest">Descartar</button>
+                  <button type="submit" className="flex-1 bg-primary text-brand-navy py-3 rounded-xl font-black text-[10px] uppercase tracking-widest">Salvar Alterações</button>
+                </div>
+              </form>
+            </div>
+          </div >
+        )
+      }
 
       {/* MODAL: EDITAR CLIENTE */}
-      {editingClient && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-brand-deep/90 backdrop-blur-xl">
-          <div className="w-full max-w-[600px] bg-brand-navy rounded-[3.5rem] border border-white/20 shadow-2xl p-14 animate-in zoom-in-95">
-            <h3 className="text-3xl font-display font-black text-white mb-10">Dados do Cliente</h3>
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              onUpdateClient(editingClient.id, editingClient);
-              triggerToast('Dados do cliente atualizados!');
-              setEditingClient(null);
-            }} className="space-y-8">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Nome Completo</label>
-                  <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingClient.name} onChange={e => setEditingClient({ ...editingClient, name: e.target.value })} />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">E-mail de Contato</label>
-                  <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingClient.email || ''} onChange={e => setEditingClient({ ...editingClient, email: e.target.value })} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Telefone</label>
-                  <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingClient.phone || ''} onChange={e => setEditingClient({ ...editingClient, phone: e.target.value })} />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Valor da Fatura (R$)</label>
-                  <input type="number" className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingClient.billValue || 0} onChange={e => setEditingClient({ ...editingClient, billValue: Number(e.target.value) })} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Cidade</label>
-                  <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingClient.city || ''} onChange={e => setEditingClient({ ...editingClient, city: e.target.value })} />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Estado</label>
-                  <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingClient.state || ''} onChange={e => setEditingClient({ ...editingClient, state: e.target.value })} />
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-white/10">
-                <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4">Credenciais de Acesso</h4>
+      {
+        editingClient && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-brand-deep/90 backdrop-blur-xl">
+            <div className="w-full max-w-[600px] bg-brand-navy rounded-[3.5rem] border border-white/20 shadow-2xl p-14 animate-in zoom-in-95">
+              <h3 className="text-3xl font-display font-black text-white mb-10">Dados do Cliente</h3>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                onUpdateClient(editingClient.id, editingClient);
+                triggerToast('Dados do cliente atualizados!');
+                setEditingClient(null);
+              }} className="space-y-8">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Login (E-mail)</label>
-                    <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white font-bold text-sm" value={editingClient.accessEmail || ''} onChange={e => setEditingClient({ ...editingClient, accessEmail: e.target.value })} />
+                    <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Nome Completo</label>
+                    <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingClient.name} onChange={e => setEditingClient({ ...editingClient, name: normalizeText(e.target.value) })} />
                   </div>
                   <div>
-                    <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Senha</label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        value={editingClient.accessPassword || ''}
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white font-bold text-sm font-mono outline-none pr-12"
-                        onChange={e => setEditingClient({ ...editingClient, accessPassword: e.target.value })}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-lg">
-                          {showPassword ? 'visibility_off' : 'visibility'}
-                        </span>
-                      </button>
+                    <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">E-mail de Contato</label>
+                    <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingClient.email || ''} onChange={e => setEditingClient({ ...editingClient, email: e.target.value })} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Telefone</label>
+                    <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingClient.phone || ''} onChange={e => setEditingClient({ ...editingClient, phone: maskPhone(e.target.value) })} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Valor da Fatura (R$)</label>
+                    <input
+                      type="text"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none"
+                      value={maskCurrency(String(editingClient.billValue || 0))}
+                      onChange={e => setEditingClient({ ...editingClient, billValue: parseCurrencyToNumber(e.target.value) })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Cidade</label>
+                    <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingClient.city || ''} onChange={e => setEditingClient({ ...editingClient, city: normalizeText(e.target.value) })} />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Estado</label>
+                    <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white font-bold outline-none" value={editingClient.state || ''} onChange={e => setEditingClient({ ...editingClient, state: normalizeText(e.target.value) })} />
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-white/10">
+                  <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4">Credenciais de Acesso</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Login (E-mail)</label>
+                      <input className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white font-bold text-sm" value={editingClient.accessEmail || ''} onChange={e => setEditingClient({ ...editingClient, accessEmail: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-white/40 uppercase tracking-widest block mb-2">Senha</label>
+                      <div className="relative">
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          value={editingClient.accessPassword || ''}
+                          className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white font-bold text-sm font-mono outline-none pr-12"
+                          onChange={e => setEditingClient({ ...editingClient, accessPassword: e.target.value })}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-lg">
+                            {showPassword ? 'visibility_off' : 'visibility'}
+                          </span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex gap-6 pt-6">
-                <button type="submit" className="flex-2 px-10 py-5 bg-primary text-brand-navy rounded-2xl font-black uppercase tracking-widest shadow-2xl hover:scale-105 transition-all">Salvar Alterações</button>
-                <button type="button" onClick={() => setEditingClient(null)} className="flex-1 py-5 text-white/40 font-black uppercase tracking-widest hover:text-white">Cancelar</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL: API KEY */}
-      {isKeyModalOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-brand-deep/90 backdrop-blur-xl">
-          <div className="w-full max-w-md bg-brand-navy rounded-[3.5rem] border border-white/20 shadow-2xl p-12 text-center animate-in zoom-in-95">
-            <span className="material-symbols-outlined text-5xl text-yellow-500 mb-6">key</span>
-            <h3 className="text-2xl font-display font-black text-white mb-4">Ativar Inteligência Artificial</h3>
-            <p className="text-white/60 mb-8 text-sm leading-relaxed">
-              Para usar a prospecção automática, insira sua
-              <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline ml-1 font-bold">Chave API do Google Gemini</a>.
-            </p>
-
-            <input
-              type="password"
-              placeholder="Cole sua API Key aqui..."
-              className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white font-bold outline-none mb-6 text-center text-sm"
-              value={keyInput}
-              onChange={e => setKeyInput(e.target.value)}
-            />
-
-            <button onClick={async () => {
-              if (!keyInput) return triggerToast('Insira uma chave para testar.', 'error');
-              try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${keyInput}`);
-                if (!res.ok) {
-                  const err = await res.json();
-                  throw new Error(err.error?.message || 'Erro desconhecido');
-                }
-                const data = await res.json();
-                const count = data.models?.length || 0;
-                triggerToast(`Sucesso! ${count} modelos encontrados. Pode Salvar!`);
-              } catch (e: any) {
-                alert(`Erro na Chave: ${e.message}\n\nVerifique se a API "Google Generative AI" está ativada no Google Cloud.`);
-              }
-            }} className="w-full bg-blue-500/20 text-blue-400 border border-blue-500/30 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-blue-500/30 transition-colors mb-4 flex items-center justify-center gap-2">
-              <span className="material-symbols-outlined text-sm">wifi_tethering</span> Testar Conexão
-            </button>
-            <button onClick={handleSaveKey} className="w-full bg-yellow-500 text-brand-navy py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-yellow-400 transition-colors mb-4 shadow-lg shadow-yellow-500/20">
-              Salvar e Ativar
-            </button>
-            <div className="flex gap-4">
-              <button onClick={() => { localStorage.removeItem('gemini_api_key'); setHasApiKey(false); setKeyInput(''); setIsKeyModalOpen(false); triggerToast('Chave removida.'); }} className="flex-1 py-3 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-xl font-bold uppercase tracking-widest text-[10px] transition-all">
-                Remover Chave
-              </button>
-              <button onClick={() => setIsKeyModalOpen(false)} className="flex-1 py-3 text-white/30 hover:text-white font-bold uppercase tracking-widest text-[10px] transition-colors">
-                Cancelar
-              </button>
+                <div className="flex gap-6 pt-6">
+                  <button type="submit" className="flex-2 px-10 py-5 bg-primary text-brand-navy rounded-2xl font-black uppercase tracking-widest shadow-2xl hover:scale-105 transition-all">Salvar Alterações</button>
+                  <button type="button" onClick={() => setEditingClient(null)} className="flex-1 py-5 text-white/40 font-black uppercase tracking-widest hover:text-white">Cancelar</button>
+                </div>
+              </form>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
-      {showToast.show && (
-        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[300] bg-primary text-brand-navy px-10 py-6 rounded-3xl font-black animate-in fade-in slide-in-from-bottom-6 flex items-center gap-3 shadow-2xl">
-          <span className="material-symbols-outlined">check_circle</span>
-          {showToast.msg}
-        </div>
-      )}
+      {/* MODAL: API KEY */}
+      {
+        isKeyModalOpen && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-brand-deep/90 backdrop-blur-xl">
+            <div className="w-full max-w-md bg-brand-navy rounded-[3.5rem] border border-white/20 shadow-2xl p-12 text-center animate-in zoom-in-95">
+              <span className="material-symbols-outlined text-5xl text-yellow-500 mb-6">key</span>
+              <h3 className="text-2xl font-display font-black text-white mb-4">Ativar Inteligência Artificial</h3>
+              <p className="text-white/60 mb-8 text-sm leading-relaxed">
+                Para usar a prospecção automática, insira sua
+                <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline ml-1 font-bold">Chave API do Google Gemini</a>.
+              </p>
+
+              <input
+                type="password"
+                placeholder="Cole sua API Key aqui..."
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white font-bold outline-none mb-6 text-center text-sm"
+                value={keyInput}
+                onChange={e => setKeyInput(e.target.value)}
+              />
+
+              <button onClick={async () => {
+                if (!keyInput) return triggerToast('Insira uma chave para testar.', 'error');
+                try {
+                  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${keyInput}`);
+                  if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.error?.message || 'Erro desconhecido');
+                  }
+                  const data = await res.json();
+                  const count = data.models?.length || 0;
+                  triggerToast(`Sucesso! ${count} modelos encontrados. Pode Salvar!`);
+                } catch (e: any) {
+                  alert(`Erro na Chave: ${e.message}\n\nVerifique se a API "Google Generative AI" está ativada no Google Cloud.`);
+                }
+              }} className="w-full bg-blue-500/20 text-blue-400 border border-blue-500/30 py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-blue-500/30 transition-colors mb-4 flex items-center justify-center gap-2">
+                <span className="material-symbols-outlined text-sm">wifi_tethering</span> Testar Conexão
+              </button>
+              <button onClick={handleSaveKey} className="w-full bg-yellow-500 text-brand-navy py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-yellow-400 transition-colors mb-4 shadow-lg shadow-yellow-500/20">
+                Salvar e Ativar
+              </button>
+              <div className="flex gap-4">
+                <button onClick={() => { localStorage.removeItem('gemini_api_key'); setHasApiKey(false); setKeyInput(''); setIsKeyModalOpen(false); triggerToast('Chave removida.'); }} className="flex-1 py-3 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-xl font-bold uppercase tracking-widest text-[10px] transition-all">
+                  Remover Chave
+                </button>
+                <button onClick={() => setIsKeyModalOpen(false)} className="flex-1 py-3 text-white/30 hover:text-white font-bold uppercase tracking-widest text-[10px] transition-colors">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {
+        showToast.show && (
+          <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[300] bg-primary text-brand-navy px-10 py-6 rounded-3xl font-black animate-in fade-in slide-in-from-bottom-6 flex items-center gap-3 shadow-2xl">
+            <span className="material-symbols-outlined">check_circle</span>
+            {showToast.msg}
+          </div>
+        )
+      }
 
       {/* MODAL: VISUALIZAR DOCUMENTO (Caso nova aba falhe) */}
-      {viewingDoc && (
-        <div className="fixed inset-0 z-[400] bg-black/90 backdrop-blur-xl flex flex-col">
-          <header className="p-6 flex justify-between items-center bg-brand-navy/60 border-b border-white/10">
-            <h3 className="font-display font-black text-xl">Pré-visualização de Documento</h3>
-            <button onClick={() => setViewingDoc(null)} className="size-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all">
-              <span className="material-symbols-outlined">close</span>
-            </button>
-          </header>
-          <div className="flex-1 p-10 flex justify-center overflow-auto">
-            <img src={viewingDoc} alt="Fatura" className="max-w-full h-auto rounded-xl shadow-2xl" />
+      {
+        viewingDoc && (
+          <div className="fixed inset-0 z-[400] bg-black/90 backdrop-blur-xl flex flex-col">
+            <header className="p-6 flex justify-between items-center bg-brand-navy/60 border-b border-white/10">
+              <h3 className="font-display font-black text-xl">Pré-visualização de Documento</h3>
+              <button onClick={() => setViewingDoc(null)} className="size-12 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-all">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </header>
+            <div className="flex-1 p-10 flex justify-center overflow-auto">
+              <img src={viewingDoc} alt="Fatura" className="max-w-full h-auto rounded-xl shadow-2xl" />
+            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 };
 

@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Logo from '../components/Logo';
+import { maskPhone, maskCurrency, parseCurrencyToNumber, normalizeText } from '../lib/masks';
 
 const SignupFlow: React.FC<{ onComplete: (data: any) => void }> = ({ onComplete }) => {
   const navigate = useNavigate();
@@ -82,7 +83,7 @@ const SignupFlow: React.FC<{ onComplete: (data: any) => void }> = ({ onComplete 
                   className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-4 outline-none focus:ring-4 ring-primary/10 transition-all text-slate-900 dark:text-white font-bold"
                   placeholder="Ex: João Silva"
                   value={formData.name}
-                  onChange={e => setFormData({ ...formData, name: e.target.value })}
+                  onChange={e => setFormData({ ...formData, name: normalizeText(e.target.value) })}
                 />
               </div>
 
@@ -102,7 +103,7 @@ const SignupFlow: React.FC<{ onComplete: (data: any) => void }> = ({ onComplete 
                     className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-4 outline-none text-slate-900 dark:text-white"
                     placeholder="(00) 00000-0000"
                     value={formData.phone}
-                    onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                    onChange={e => setFormData({ ...formData, phone: maskPhone(e.target.value) })}
                   />
                 </div>
               </div>
@@ -124,11 +125,11 @@ const SignupFlow: React.FC<{ onComplete: (data: any) => void }> = ({ onComplete 
                 <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Valor da Conta (R$)</label>
                   <input
-                    type="number"
+                    type="text"
                     className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-slate-900 dark:text-white font-black"
                     placeholder="0,00"
-                    value={formData.billValue}
-                    onChange={e => setFormData({ ...formData, billValue: e.target.value })}
+                    value={maskCurrency(String(formData.billValue))}
+                    onChange={e => setFormData({ ...formData, billValue: String(parseCurrencyToNumber(e.target.value)) })}
                   />
                 </div>
               </div>

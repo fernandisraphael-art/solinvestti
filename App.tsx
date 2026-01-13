@@ -68,6 +68,8 @@ const App: React.FC = () => {
       if (session) {
         fetchProfile(session.user.id);
       } else {
+        // Load public entities for guests
+        fetchEntities(UserRole.CONSUMER, 'guest');
         setIsLoading(false);
       }
     });
@@ -162,14 +164,49 @@ const App: React.FC = () => {
 
       // 3. Fetch Clients (Simplified for now)
       const { data: clientData } = await supabase.from('clients').select('*');
-      if (clientData) {
-        setGlobalClients(clientData.map(c => ({
-          ...c,
-          billValue: Number(c.bill_value),
-          date: new Date(c.created_at).toLocaleDateString('pt-BR'),
-          accessEmail: c.access_email,
-          accessPassword: c.access_password
-        })));
+      const clients = clientData ? clientData.map(c => ({
+        ...c,
+        billValue: Number(c.bill_value),
+        date: new Date(c.created_at).toLocaleDateString('pt-BR'),
+        accessEmail: c.access_email,
+        accessPassword: c.access_password
+      })) : [];
+      setGlobalClients(clients);
+
+      // 4. Calculate Generator Occupancy and Update State
+      if (genData) {
+        setGenerators(genData.map((g: any) => {
+          const currentOccupancy = clients
+            .filter(c => c.provider_id === g.id)
+            .reduce((acc, c) => acc + (c.billValue || 0), 0);
+
+          const totalCapacity = Number(g.capacity) || 0;
+          const isFull = totalCapacity > 0 && currentOccupancy >= totalCapacity;
+
+          return {
+            ...g,
+            rating: Number(g.rating),
+            discount: Number(g.discount),
+            estimatedSavings: Number(g.estimated_savings),
+            commission: Number(g.commission),
+            responsibleName: g.responsible_name,
+            responsiblePhone: g.responsible_phone,
+            icon: 'wb_sunny',
+            color: 'from-emerald-600 to-teal-500',
+            logoUrl: g.logo_url || null,
+            accessEmail: g.access_email,
+            accessPassword: g.access_password,
+            annualRevenue: Number(g.annual_revenue),
+            company: g.company,
+            landline: g.landline,
+            city: g.city,
+            website: g.website,
+            // New fields for capacity tracking
+            currentOccupancy,
+            totalCapacity,
+            isFull
+          };
+        }));
       }
 
     } catch (err) {
@@ -204,9 +241,40 @@ const App: React.FC = () => {
 
   const resetSystem = async () => {
     try {
+      // 1. Database Cleanup
       await supabase.rpc('reset_database');
+
+      // 2. Storage Cleanup (public bucket)
+      // We list folders we know exist or list root
+      const { data: buckets } = await supabase.storage.listBuckets();
+      if (buckets?.find(b => b.id === 'public')) {
+        // Cleaning 'logos' folder
+        const { data: logos } = await supabase.storage.from('public').list('logos');
+        if (logos && logos.length > 0) {
+          await supabase.storage.from('public').remove(logos.map(f => `logos/${f.name}`));
+        }
+
+        // Cleaning 'documents' folder
+        const { data: docs } = await supabase.storage.from('public').list('documents');
+        if (docs && docs.length > 0) {
+          await supabase.storage.from('public').remove(docs.map(f => `documents/${f.name}`));
+        }
+
+        // Cleaning root files if any
+        const { data: rootFiles } = await supabase.storage.from('public').list();
+        if (rootFiles) {
+          const filesToDelete = rootFiles.filter(f => f.id !== null).map(f => f.name);
+          if (filesToDelete.length > 0) {
+            await supabase.storage.from('public').remove(filesToDelete);
+          }
+        }
+      }
+
+      // 3. Clear Local Overrides
+      localStorage.removeItem('cachedLogoUrl');
+
     } catch (error: any) {
-      console.error('Erro ao resetar banco de dados:', error);
+      console.error('Erro ao resetar banco de dados ou storage:', error);
       alert('Erro ao resetar sistema: ' + error.message);
     }
 
@@ -280,8 +348,7 @@ const App: React.FC = () => {
         status: clientData.energyBillFile ? 'Fatura Enviada' : 'Aguardando Documentação',
         provider_id: clientData.selectedProvider?.id || null,
         user_id: userId,
-        access_email: clientData.email,
-        access_password: password
+        access_email: clientData.email
       });
 
       if (error) throw error;
@@ -366,33 +433,63 @@ const App: React.FC = () => {
     // Logic: If 'active' -> 'pending' (removed from ranking). If 'pending'/'inactive' -> 'active'.
     const newStatus = (currentStatus === 'active') ? 'pending' : 'active';
 
-    const { error } = await supabase.from('generators').update({ status: newStatus }).eq('id', id);
+    // Use RPC to bypass RLS for Admin
+    const { error } = await supabase.rpc('toggle_generator_status', {
+      gen_id: id,
+      new_status: newStatus
+    });
+
     if (!error) {
       setGenerators(prev => prev.map(g => g.id === id ? { ...g, status: newStatus as any } : g));
+    } else {
+      console.error('Erro ao atualizar status:', error);
+      alert('Erro ao atualizar: ' + error.message);
+    }
+  };
+
+  const activateAllGenerators = async () => {
+    try {
+      // Use RPC to bypass RLS for Activate All
+      const { data: count, error } = await supabase.rpc('activate_all_generators');
+
+      if (!error) {
+        // Optimistically update all local
+        setGenerators(prev => prev.map(g => g.status === 'pending' ? { ...g, status: 'active' } : g));
+        if (typeof count === 'number' && count > 0) {
+          alert(`${count} usina(s) ativada(s) com sucesso!`);
+        } else if (count === 0) {
+          alert('Nenhuma usina pendente para ativar.');
+        } else {
+          alert('Usinas ativadas com sucesso!');
+        }
+      } else {
+        throw error;
+      }
+    } catch (e: any) {
+      console.error('Erro ao ativar todas:', e);
+      alert('Erro ao ativar usinas: ' + e.message);
     }
   };
 
   const deleteGenerator = async (id: string) => {
-    // Delete from DB
     const { error } = await supabase.from('generators').delete().eq('id', id);
 
     if (!error) {
-      // Update local state
       setGenerators(prev => prev.filter(g => g.id !== id));
-      // Optional: If we wanted to delete the Auth User too, we'd need a server-side function (Admin API).
-      // For now, removing the generator profile is sufficient for the Dashboard.
     } else {
       console.error('Erro ao excluir usina:', error);
+      alert('Erro ao excluir usina: ' + error.message);
     }
   };
+
 
   const updateGenerator = async (id: string, updates: Partial<EnergyProvider>) => {
     const dbUpdates: any = {};
     if (updates.name !== undefined) dbUpdates.name = updates.name;
     if (updates.responsibleName !== undefined) dbUpdates.responsible_name = updates.responsibleName;
     if (updates.responsiblePhone !== undefined) dbUpdates.responsible_phone = updates.responsiblePhone;
-    if (updates.discount !== undefined) dbUpdates.discount = updates.discount;
-    if (updates.commission !== undefined) dbUpdates.commission = updates.commission;
+    if (updates.discount !== undefined) dbUpdates.discount = Number(updates.discount);
+    if (updates.commission !== undefined) dbUpdates.commission = Number(updates.commission);
     if (updates.capacity !== undefined) dbUpdates.capacity = updates.capacity;
     if (updates.company !== undefined) dbUpdates.company = updates.company;
     if (updates.landline !== undefined) dbUpdates.landline = updates.landline;
@@ -400,30 +497,29 @@ const App: React.FC = () => {
     if (updates.website !== undefined) dbUpdates.website = updates.website;
     if (updates.annualRevenue !== undefined) dbUpdates.annual_revenue = updates.annualRevenue;
     if (updates.region !== undefined) dbUpdates.region = updates.region;
+    if (updates.status !== undefined) dbUpdates.status = updates.status;
 
     const { error } = await supabase.from('generators').update(dbUpdates).eq('id', id);
     if (!error) {
+      setGenerators(prev => prev.map(g => g.id === id ? { ...g, ...updates } : g));
+      // Force fetch to propagate RLS bypass if needed or valid user
       const { data: newUser } = await supabase.auth.getUser();
+      // If no user, we might be in admin local mode, so we rely on local state updates mostly
       if (newUser.user) fetchEntities(user?.role || UserRole.ADMIN, newUser.user.id);
     } else {
       console.error('Error updating generator:', error);
+      alert('Erro ao salvar edições: ' + error.message);
     }
   };
 
   const deleteClient = async (id: string) => {
-    console.log('Iniciando deleteClient no App.tsx para ID:', id);
-    alert('DEBUG: App.tsx recebeu ordem de excluir ID: ' + id);
+
     const { error } = await supabase.from('clients').delete().eq('id', id);
     if (!error) {
-      console.log('Deleção no Supabase concluída com sucesso');
-      alert('DEBUG: Supabase retornou SUCESSO na exclusão!');
-      setGlobalClients(prev => {
-        const filtered = prev.filter(c => c.id !== id);
-        return filtered;
-      });
+      setGlobalClients(prev => prev.filter(c => c.id !== id));
     } else {
       console.error('Erro ao excluir cliente no Supabase:', error);
-      alert('ERRO SUPABASE: ' + error.message);
+      alert('Erro ao excluir cliente: ' + error.message);
     }
   };
 
@@ -441,10 +537,13 @@ const App: React.FC = () => {
 
     const { error } = await supabase.from('clients').update(dbUpdates).eq('id', id);
     if (!error) {
+      // Update local state immediately
+      setGlobalClients(prev => prev.map(c => c.id === id ? { ...c, ...updates, billValue: Number(updates.billValue ?? c.billValue) } : c));
       const { data: newUser } = await supabase.auth.getUser();
       fetchEntities(user?.role || UserRole.ADMIN, newUser.user?.id || 'admin-bypass');
     } else {
       console.error('Error updating client:', error);
+      alert('Erro ao salvar edições: ' + error.message);
     }
   };
 
@@ -482,6 +581,7 @@ const App: React.FC = () => {
 
   const handleLogin = (role: UserRole, name: string) => {
     setUser({ role, name });
+    updateUserData({ name }); // Sync name to userData for Marketplace display
     // Force fetch to ensure UI reflects DB state (even for empty DB)
     fetchEntities(role, 'admin-bypass');
     if (role === UserRole.CONSUMER) {
@@ -499,7 +599,13 @@ const App: React.FC = () => {
           <Route path="/signup" element={<SignupFlow onComplete={updateUserData} />} />
           <Route path="/generator-signup" element={<GeneratorSignup onComplete={handleGeneratorSignup} />} />
 
-          <Route path="/marketplace" element={<ConsumerMarketplace userData={userData} generators={generators} onSelect={updateUserData} />} />
+          <Route path="/marketplace" element={
+            <ConsumerMarketplace
+              userData={userData}
+              generators={generators.filter(g => !g.isFull && g.status === 'active')}
+              onSelect={updateUserData}
+            />
+          } />
           <Route path="/savings" element={<ConsumerSavings userData={userData} />} />
           <Route path="/investments" element={<InvestmentPartners userData={userData} onSelect={updateUserData} />} />
           <Route path="/investment-simulation" element={<InvestmentSimulation userData={userData} onComplete={updateUserData} />} />
@@ -524,6 +630,7 @@ const App: React.FC = () => {
                 onDeleteGenerator={deleteGenerator}
                 onUpdateGenerator={updateGenerator}
                 onAddGenerator={handleAddGenerator}
+                onActivateAll={activateAllGenerators}
                 onBatchAddGenerators={async (batch) => {
                   const session = await supabase.auth.getSession();
                   const uid = session.data.session?.user.id;
@@ -535,7 +642,7 @@ const App: React.FC = () => {
                     type: gen.type,
                     region: gen.region,
                     discount: gen.discount,
-                    status: gen.status,
+                    status: gen.status || 'pending',
                     capacity: gen.capacity,
                     responsible_name: gen.responsibleName,
                     responsible_phone: gen.responsiblePhone,
@@ -616,17 +723,7 @@ const App: React.FC = () => {
           } />
         </Routes>
 
-        <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-[100]">
-          <button
-            onClick={() => document.documentElement.classList.toggle('dark')}
-            className="p-4 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-full shadow-2xl border border-slate-200 dark:border-slate-700 hover:scale-110 transition-transform"
-          >
-            <span className="material-symbols-outlined block dark:hidden">dark_mode</span>
-            <span className="material-symbols-outlined hidden dark:block">light_mode</span>
-          </button>
 
-
-        </div>
       </div>
     </HashRouter>
   );
