@@ -86,14 +86,43 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
           <span className="material-symbols-outlined text-5xl">verified</span>
         </div>
         <h2 className="text-3xl font-display font-black mb-4 text-brand-navy dark:text-white">
-          {isUpdate ? 'Estratégia Atualizada!' : 'Cadastro Recebido!'}
+          {isUpdate ? 'Estratégia Atualizada!' : 'Cadastro Realizado com Sucesso!'}
         </h2>
-        <p className="text-slate-500 dark:text-slate-400 max-w-lg mb-12 text-sm font-medium leading-relaxed uppercase tracking-wide">
-          {isUpdate
-            ? `Olá ${userData.name}, sua nova estratégia de rendimento com a ${userData.selectedProvider?.name} já foi aplicada ao seu perfil.`
-            : `Assim que avaliarmos sua fatura, a geradora entrará em contato para efetivar a conexão. Após a confirmação, seu acesso ao dashboard será liberado pela administração.`
-          }
-        </p>
+        {isUpdate ? (
+          <p className="text-slate-500 dark:text-slate-400 max-w-lg mb-12 text-sm font-medium leading-relaxed">
+            Olá {userData.name}, sua nova estratégia de rendimento com a {userData.selectedProvider?.name} já foi aplicada ao seu perfil.
+          </p>
+        ) : (
+          <div className="max-w-2xl mb-12 space-y-6">
+            <div className="bg-primary/10 rounded-2xl p-6 text-left">
+              <div className="flex items-start gap-4">
+                <span className="material-symbols-outlined text-primary text-2xl mt-1">bolt</span>
+                <div>
+                  <h3 className="text-sm font-bold text-brand-navy dark:text-white mb-2">Geradora de Energia</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                    A <span className="font-bold text-primary">{userData.selectedProvider?.name}</span> entrará em contato assim que a conexão for liberada pela concessionária.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-brand-navy/10 dark:bg-white/10 rounded-2xl p-6 text-left">
+              <div className="flex items-start gap-4">
+                <span className="material-symbols-outlined text-brand-navy dark:text-primary text-2xl mt-1">trending_up</span>
+                <div>
+                  <h3 className="text-sm font-bold text-brand-navy dark:text-white mb-2">Corretora de Investimentos</h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                    A <span className="font-bold text-brand-navy dark:text-white">{userData.investmentPartner?.name || 'nossa corretora parceira'}</span> fará uma análise do seu perfil e entrará em contato para montar o seu plano de investimento personalizado.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wide">
+              Você receberá atualizações por e-mail em <span className="font-bold">{userData.email}</span>
+            </p>
+          </div>
+        )}
         <button
           onClick={() => navigate('/')}
           className="btn-startpro text-white font-black px-16 py-6 rounded-[2rem] shadow-2xl flex items-center gap-4 hover:scale-105 transition-transform uppercase text-xs tracking-widest"
