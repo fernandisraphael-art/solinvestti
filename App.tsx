@@ -222,7 +222,14 @@ const App: React.FC = () => {
                 onDeleteClient={async (id) => { await AdminService.deleteClient(id); refreshData(); }}
                 onUpdateClient={async (id, updates) => { await AdminService.updateClient(id, updates); refreshData(); }}
                 onApproveClient={async (id) => {
-                  await AdminService.updateClient(id, { status: 'approved' });
+                  const client = clients.find(c => c.id === id);
+                  if (client) {
+                    await AdminService.approveClient(client);
+                    refreshData();
+                  }
+                }}
+                onActivateAllClients={async () => {
+                  await AdminService.activateAllClients();
                   refreshData();
                 }}
                 concessionaires={concessionaires}

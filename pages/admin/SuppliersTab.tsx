@@ -42,85 +42,97 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({
             ? gen.capacity
             : parseFloat(String(gen.capacity || '0').replace(/\./g, '').replace(',', '.'));
 
-        const relevantClients = clients.filter(c => c.supplier_id === gen.id || c.supplierId === gen.id);
+        const relevantClients = clients.filter(c =>
+            (c.supplier_id === gen.id || c.supplierId === gen.id || c.provider_id === gen.id) &&
+            (c.status === 'approved' || c.status === 'active')
+        );
 
-        const usedMW = relevantClients.reduce((sum, c) => {
+        const stats = relevantClients.reduce((acc, c) => {
             // 1. Pega consumo em kWh (ou estima pelo valor da conta)
-            const consumptionKWh = Number(c.consumption) || (Number(c.billValue) / 0.85);
+            const billVal = Number(c.billValue || c.bill_value || 0);
+            const consumptionKWh = Number(c.consumption) || (billVal / 0.85);
 
             // 2. Converte kWh do cliente para MW equivalentes da usina
             const equivalentMW = consumptionKWh / KWH_PER_MW;
 
-            return sum + (equivalentMW || 0);
-        }, 0);
+            acc.usedMW += (equivalentMW || 0);
+            acc.totalBill += billVal;
 
-        return { total: totalMW, used: usedMW, remaining: totalMW - usedMW, clientCount: relevantClients.length };
+            return acc;
+        }, { usedMW: 0, totalBill: 0 });
+
+        const commissionPercentage = Number(gen.commission || 0) / 100;
+        const totalCommission = stats.totalBill * commissionPercentage;
+
+        return {
+            total: totalMW,
+            used: stats.usedMW,
+            remaining: totalMW - stats.usedMW,
+            clientCount: relevantClients.length,
+            totalBill: stats.totalBill,
+            totalCommission
+        };
     };
     const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
 
     const pendingCount = generators.filter(g => g.status === 'pending').length;
 
     return (
-        <div className="space-y-10 animate-in fade-in duration-500">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h3 className="text-2xl font-display font-black text-white mb-1 uppercase tracking-tight">Rede de Parceiros Geradores</h3>
-                    <p className="text-white/40 text-sm">Gestão comercial e homologação de ativos de geração distribuída.</p>
-                </div>
-                <div className="flex items-center gap-4">
-                    <button onClick={onProspect} className="px-6 py-3 bg-primary text-brand-navy rounded-xl font-black text-[10px] uppercase tracking-widest shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:scale-105 transition-all">
-                        <span className="material-symbols-outlined text-sm mr-2">travel_explore</span> Prospecção IA
-                    </button>
+        <div className="space-y-6 animate-in fade-in duration-500 bg-[#020617] p-3 rounded-2xl border border-white/5 max-h-screen overflow-y-auto no-scrollbar">
 
+            <div className="flex items-center gap-3">
+                <button onClick={onProspect} className="px-5 py-2.5 bg-primary text-brand-navy rounded-xl font-black text-[9px] uppercase tracking-widest shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:scale-105 transition-all">
+                    <span className="material-symbols-outlined text-sm mr-2">travel_explore</span> Prospecção IA
+                </button>
+
+                <button
+                    onClick={onNewGenerator}
+                    className="px-5 py-2.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-emerald-500/20 transition-all flex items-center gap-2"
+                >
+                    <span className="material-symbols-outlined text-sm">add_circle</span> Novo Gerador
+                </button>
+
+                <div className="relative">
                     <button
-                        onClick={onNewGenerator}
-                        className="px-6 py-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-500/20 transition-all flex items-center gap-2"
+                        onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+                        className="px-5 py-2.5 bg-[#0c112b] border border-white/5 text-white rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-white/5 transition-all flex items-center gap-2"
                     >
-                        <span className="material-symbols-outlined text-sm">add_circle</span> Novo Gerador
+                        <span className="material-symbols-outlined text-sm">download</span> Exportar
                     </button>
 
-                    <div className="relative">
-                        <button
-                            onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
-                            className="px-6 py-3 bg-brand-navy border border-white/10 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-white/5 transition-all flex items-center gap-2"
-                        >
-                            <span className="material-symbols-outlined text-sm">download</span> Exportar
-                        </button>
-
-                        {isExportMenuOpen && (
-                            <div className="absolute top-full right-0 mt-2 bg-[#0F172A] border border-white/10 rounded-xl p-2 flex flex-col w-40 shadow-2xl z-50">
-                                <button onClick={onExportExcel} className="flex items-center gap-2 px-4 py-3 hover:bg-white/5 rounded-lg text-left text-xs font-bold text-white transition-colors">
-                                    <span className="material-symbols-outlined text-green-500 text-sm">table_view</span> Excel (.xlsx)
-                                </button>
-                                <button onClick={onExportPDF} className="flex items-center gap-2 px-4 py-3 hover:bg-white/5 rounded-lg text-left text-xs font-bold text-white transition-colors">
-                                    <span className="material-symbols-outlined text-red-500 text-sm">picture_as_pdf</span> PDF
-                                </button>
-                            </div>
-                        )}
-                    </div>
-
-                    <button
-                        onClick={onImport}
-                        className="px-6 py-3 bg-brand-navy border border-white/10 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-white/5 transition-all flex items-center gap-2"
-                    >
-                        <span className="material-symbols-outlined text-sm">upload_file</span> Importar Planilha
-                    </button>
+                    {isExportMenuOpen && (
+                        <div className="absolute top-full right-0 mt-2 bg-[#0c112b] border border-white/10 rounded-xl p-2 flex flex-col w-40 shadow-2xl z-50">
+                            <button onClick={onExportExcel} className="flex items-center gap-2 px-4 py-3 hover:bg-white/5 rounded-lg text-left text-xs font-bold text-white transition-colors">
+                                <span className="material-symbols-outlined text-green-500 text-sm">table_view</span> Excel (.xlsx)
+                            </button>
+                            <button onClick={onExportPDF} className="flex items-center gap-2 px-4 py-3 hover:bg-white/5 rounded-lg text-left text-xs font-bold text-white transition-colors">
+                                <span className="material-symbols-outlined text-red-500 text-sm">picture_as_pdf</span> PDF
+                            </button>
+                        </div>
+                    )}
                 </div>
+
+                <button
+                    onClick={onImport}
+                    className="px-5 py-2.5 bg-[#0c112b] border border-white/5 text-white rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-white/5 transition-all flex items-center gap-2"
+                >
+                    <span className="material-symbols-outlined text-sm">upload_file</span> Importar
+                </button>
             </div>
 
-            {/* Banner de Ativação em Massa (Posicionado no Topo conforme solicitado) */}
+            {/* Banner de Ativação em Massa */}
             {pendingCount > 0 && (
-                <div className="bg-emerald-500/10 border border-emerald-500/20 p-8 rounded-[3rem] flex items-center justify-between animate-bounce-subtle">
+                <div className="bg-emerald-500/10 border border-emerald-500/20 p-6 rounded-3xl flex items-center justify-between animate-bounce-subtle">
                     <div className="flex items-center gap-6">
-                        <div className="size-14 bg-emerald-500 rounded-full flex items-center justify-center text-brand-navy shadow-lg shadow-emerald-500/20">
+                        <div className="size-12 bg-emerald-500 rounded-full flex items-center justify-center text-brand-navy shadow-lg shadow-emerald-500/20">
                             <span className="material-symbols-outlined font-black">done_all</span>
                         </div>
                         <div>
-                            <p className="font-bold text-emerald-400 uppercase tracking-widest text-[10px]">Ação em Massa Disponível</p>
-                            <h4 className="text-white font-display font-black text-xl">Ativar {pendingCount} usinas pendentes?</h4>
+                            <p className="font-bold text-emerald-400 uppercase tracking-widest text-[9px]">Ação em Massa Disponível</p>
+                            <h4 className="text-white font-display font-black text-lg">Ativar {pendingCount} usinas pendentes?</h4>
                         </div>
                     </div>
-                    <button onClick={onActivateAll} className="px-10 py-4 bg-emerald-500 text-brand-navy rounded-2xl font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">
+                    <button onClick={onActivateAll} className="px-8 py-3 bg-emerald-500 text-brand-navy rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">
                         Ativar Agora
                     </button>
                 </div>
@@ -129,9 +141,9 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({
             {/* Compact Grid Layout for Generators */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
                 {generators.map((gen) => {
-                    const { total, used, remaining, clientCount } = getCapacityStats(gen);
+                    const { total, used, remaining, clientCount, totalCommission } = getCapacityStats(gen);
                     return (
-                        <div key={gen.id} className={`bg-white/[0.03] border rounded-xl hover:border-blue-500/30 transition-colors group relative overflow-hidden ${gen.status === 'cancelled' ? 'border-red-500/20 opacity-60 hover:opacity-100' : 'border-white/10'}`}>
+                        <div key={gen.id} className={`bg-[#0c112b] border rounded-xl hover:border-blue-500/30 transition-colors group relative overflow-hidden ${gen.status === 'cancelled' ? 'border-red-500/20 opacity-60 hover:opacity-100' : 'border-white/5 shadow-xl'}`}>
                             <div className={`h-1 w-full bg-gradient-to-r ${gen.color || 'from-slate-400 to-slate-500'}`}></div>
                             <div className="p-3">
                                 {/* Header: Name & Status */}
@@ -169,6 +181,24 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({
                                         <span className="block text-white/20 font-bold uppercase tracking-wider text-[8px]">Comissão</span>
                                         <span className="font-bold text-white/80">{gen.commission}%</span>
                                     </div>
+
+                                    {/* New: Client & Commission Counter Prominent */}
+                                    <div className="col-span-2 border-t border-white/5 pt-1 mt-0.5 flex flex-col gap-1 bg-blue-500/5 -mx-2 px-2 py-1.5">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-white/40 font-bold uppercase tracking-wider text-[8px]">Carteira de Clientes</span>
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="size-4 rounded-full bg-blue-500/20 flex items-center justify-center text-[10px] text-blue-400">
+                                                    <span className="material-symbols-outlined text-[12px]">group</span>
+                                                </span>
+                                                <span className="font-black text-white text-[11px]">{clientCount} Ativos</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex justify-between items-center border-t border-white/5 pt-1">
+                                            <span className="text-white/40 font-bold uppercase tracking-wider text-[8px]">Receita de Comissões</span>
+                                            <span className="font-black text-primary text-[11px]">R$ {totalCommission.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                        </div>
+                                    </div>
+
                                     <div className="col-span-2 border-t border-white/5 pt-1 mt-0.5">
                                         <span className="block text-white/20 font-bold uppercase tracking-wider text-[8px]">Capacidade Restante / Total</span>
                                         <div className="flex justify-between items-end">

@@ -21,18 +21,18 @@ const ProspectorTab: React.FC<ProspectorTabProps> = ({
     onRejectCandidate
 }) => {
     return (
-        <div className="space-y-12 animate-in fade-in duration-500 pb-20">
+        <div className="space-y-6 animate-in fade-in duration-500 pb-20 bg-[#020617] p-3 rounded-2xl border border-white/5 max-h-screen overflow-y-auto no-scrollbar">
+
             <div className="bg-white/5 border border-white/10 p-10 lg:p-16 rounded-[4rem] text-center max-w-4xl mx-auto shadow-premium overflow-hidden relative">
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent"></div>
 
                 <div className="relative z-10">
-                    <div className="size-24 bg-primary/10 rounded-full flex items-center justify-center text-primary mx-auto mb-8 shadow-[0_0_40px_rgba(16,185,129,0.2)] animate-pulse">
-                        <span className="material-symbols-outlined text-5xl">travel_explore</span>
+                    <div className="size-20 bg-primary/10 rounded-full flex items-center justify-center text-primary mx-auto mb-6 shadow-[0_0_40px_rgba(16,185,129,0.2)] animate-pulse">
+                        <span className="material-symbols-outlined text-4xl">travel_explore</span>
                     </div>
-                    <h3 className="text-4xl font-display font-black text-white mb-4 uppercase tracking-tight">Expansão de Rede com IA</h3>
-                    <p className="text-white/40 text-lg mb-12 font-medium max-w-2xl mx-auto">Nossa inteligência artificial mapeia novas usinas e cooperativas em tempo real integrando fontes públicas e privadas.</p>
+                    <p className="text-white/40 text-base mb-8 font-medium max-w-2xl mx-auto">Nossa inteligência artificial mapeia novas usinas e cooperativas em tempo real integrando fontes públicas e privadas.</p>
 
-                    <div className="flex flex-col md:flex-row gap-4 max-w-2xl mx-auto bg-brand-navy p-3 rounded-3xl border border-white/10 shadow-2xl">
+                    <div className="flex flex-col md:flex-row gap-4 max-w-2xl mx-auto bg-[#020617] p-3 rounded-2xl border border-white/5 shadow-2xl">
                         <div className="flex-1 relative">
                             <span className="material-symbols-outlined absolute left-6 top-1/2 -translate-y-1/2 text-white/20">location_on</span>
                             <input
@@ -63,9 +63,9 @@ const ProspectorTab: React.FC<ProspectorTabProps> = ({
                         </h4>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {candidateSuppliers.map((candidate, i) => (
-                            <div key={i} className="bg-white/5 border border-white/10 p-8 rounded-[3rem] hover:bg-white/10 transition-all flex flex-col group relative overflow-hidden">
+                            <div key={i} className="bg-[#0c112b] border border-white/5 p-6 rounded-2xl hover:bg-white/[0.05] transition-all flex flex-col group relative overflow-hidden shadow-xl">
                                 <div className="absolute top-0 right-0 p-6 opacity-20 group-hover:opacity-100 transition-opacity">
                                     <span className="material-symbols-outlined text-primary text-4xl">travel_explore</span>
                                 </div>

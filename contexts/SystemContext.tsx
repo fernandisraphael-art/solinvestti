@@ -36,18 +36,11 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const refreshData = async () => {
         setIsLoading(true);
         try {
-            console.log('SystemContext: Initiating refreshData...');
             const [genData, concData, clientData] = await Promise.all([
                 AdminService.fetchGenerators(),
                 AdminService.fetchConcessionaires(),
                 AdminService.fetchClients()
             ]);
-
-            console.log('SystemContext: Data fetched successfully:', {
-                genCount: genData?.length,
-                concCount: concData?.length,
-                clientCount: clientData?.length
-            });
 
             setGenerators(genData.map((g: any) => ({
                 ...g,

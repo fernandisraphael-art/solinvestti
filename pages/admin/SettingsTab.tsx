@@ -9,9 +9,10 @@ const SettingsTab: React.FC<SettingsTabProps> = ({ onReset }) => {
     const { maintenanceMode, toggleMaintenanceMode } = useSystem();
 
     return (
-        <div className="space-y-12 animate-in fade-in duration-500 pb-20">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                <div className="bg-white/5 border border-white/10 p-10 rounded-[3rem] shadow-premium">
+        <div className="space-y-6 animate-in fade-in duration-500 pb-20 bg-[#020617] p-3 rounded-2xl border border-white/5 max-h-screen overflow-y-auto no-scrollbar">
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-[#0c112b] border border-white/5 p-8 rounded-2xl shadow-xl">
                     <h4 className="text-xl font-display font-black text-white mb-6 uppercase tracking-tight flex items-center gap-3">
                         <span className="material-symbols-outlined text-primary">person</span> Perfil Administrativo
                     </h4>
@@ -28,7 +29,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({ onReset }) => {
                     </div>
                 </div>
 
-                <div className="bg-white/5 border border-white/10 p-10 rounded-[3rem] shadow-premium">
+                <div className="bg-[#0c112b] border border-white/5 p-8 rounded-2xl shadow-xl">
                     <h4 className="text-xl font-display font-black text-white mb-6 uppercase tracking-tight flex items-center gap-3">
                         <span className="material-symbols-outlined text-primary">settings_suggest</span> Preferências do Sistema
                     </h4>
@@ -138,7 +139,7 @@ const SettingsTab: React.FC<SettingsTabProps> = ({ onReset }) => {
                     </div>
                 </div>
 
-                <div className="bg-white/5 border border-white/10 p-10 rounded-[3rem] shadow-premium md:col-span-2">
+                <div className="bg-[#0c112b] border border-white/5 p-8 rounded-2xl shadow-xl md:col-span-2">
                     <h4 className="text-xl font-display font-black text-white mb-6 uppercase tracking-tight flex items-center gap-3">
                         <span className="material-symbols-outlined text-primary">visibility</span> Visualização e Navegação
                     </h4>

@@ -10,20 +10,17 @@ interface ConcessionairesTabProps {
 
 const ConcessionairesTab: React.FC<ConcessionairesTabProps> = ({ concessionaires, onEdit, onAdd }) => {
     return (
-        <div className="space-y-10 animate-in fade-in duration-500">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h3 className="text-2xl font-display font-black text-white mb-1 uppercase tracking-tight">Registro de Distribuidoras</h3>
-                    <p className="text-white/40 text-sm">Gerenciamento de áreas de atuação e taxas locais.</p>
-                </div>
-                <button onClick={onAdd} className="px-8 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-2">
+        <div className="space-y-6 animate-in fade-in duration-500 bg-[#020617] p-3 rounded-2xl border border-white/5 max-h-screen overflow-y-auto no-scrollbar">
+
+            <div className="flex justify-end items-center mb-2">
+                <button onClick={onAdd} className="px-6 py-2.5 bg-[#0c112b] border border-white/5 hover:bg-white/5 text-white rounded-xl font-black text-[9px] uppercase tracking-widest transition-all flex items-center gap-2">
                     <span className="material-symbols-outlined text-sm">add</span> Nova Distribuidora
                 </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {concessionaires.map((conc) => (
-                    <div key={conc.id} className="bg-white/[0.03] border border-white/10 p-8 rounded-[3rem] hover:bg-white/5 transition-all group overflow-hidden">
+                    <div key={conc.id} className="bg-[#0c112b] border border-white/5 p-6 rounded-2xl hover:bg-white/[0.05] transition-all group overflow-hidden shadow-xl">
                         <div className="flex justify-between items-start mb-6">
                             <div className="flex items-center gap-4">
                                 <div className="size-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">

@@ -6,9 +6,11 @@ interface ClientsTabProps {
     onEditClient: (client: any) => void;
     onDeleteClient: (id: string) => void;
     onApproveClient: (id: string) => void;
+    onUpdateClient: (id: string, updates: any) => void;
+    onActivateAll: () => void;
 }
 
-const ClientsTab: React.FC<ClientsTabProps> = ({ clients, onEditClient, onDeleteClient, onApproveClient }) => {
+const ClientsTab: React.FC<ClientsTabProps> = ({ clients, onEditClient, onDeleteClient, onApproveClient, onUpdateClient, onActivateAll }) => {
     const [viewingBill, setViewingBill] = useState<string | null>(null);
 
     const getStatusStyle = (status: string) => {
@@ -59,17 +61,25 @@ const ClientsTab: React.FC<ClientsTabProps> = ({ clients, onEditClient, onDelete
     };
 
     return (
-        <div className="space-y-10 animate-in fade-in duration-500">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h3 className="text-2xl font-display font-black text-white mb-1 uppercase tracking-tight">Base de Clientes Disponíveis</h3>
-                    <p className="text-white/40 text-sm">Monitoramento de leads, adesões e status de faturamento.</p>
-                </div>
+        <div className="space-y-6 animate-in fade-in duration-500 bg-[#020617] p-3 rounded-2xl border border-white/5 max-h-screen overflow-y-auto no-scrollbar">
+
+            <div className="flex flex-col md:flex-row justify-end items-center gap-6">
+                <button
+                    onClick={() => {
+                        if (window.confirm('Deseja ativar todos os clientes que estão com cadastro pendente?')) {
+                            onActivateAll();
+                        }
+                    }}
+                    className="px-6 py-3 bg-primary text-brand-navy rounded-xl font-black text-[9px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all flex items-center gap-2 shadow-xl shadow-primary/20"
+                >
+                    <span className="material-symbols-outlined text-sm">task_alt</span>
+                    Ativar Todos Pendentes
+                </button>
             </div>
 
-            <div className="grid grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 gap-4">
                 {clients.map((client) => (
-                    <div key={client.id} className="bg-white/[0.03] border border-white/10 p-8 rounded-[2.5rem] hover:bg-white/5 transition-all flex flex-col lg:flex-row lg:items-center gap-10 group overflow-hidden relative">
+                    <div key={client.id} className="bg-[#0c112b] border border-white/5 p-6 rounded-2xl hover:bg-white/[0.05] transition-all flex flex-col lg:flex-row lg:items-center gap-8 group overflow-hidden relative shadow-xl">
                         <div className="flex items-center gap-6 lg:w-3/12">
                             <div className="size-16 rounded-2xl bg-brand-navy border border-white/5 flex items-center justify-center text-white/20 group-hover:text-primary/60 transition-colors">
                                 <span className="material-symbols-outlined text-3xl">person</span>
@@ -88,6 +98,10 @@ const ClientsTab: React.FC<ClientsTabProps> = ({ clients, onEditClient, onDelete
                             <div className="space-y-1">
                                 <p className="text-[9px] font-black text-white/20 uppercase tracking-widest">Valor da Conta</p>
                                 <p className="text-xs font-bold text-primary">R$ {formatCurrency(client.bill_value || client.billValue)}</p>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-[9px] font-black text-white/20 uppercase tracking-widest">Usina Escolhida</p>
+                                <p className="text-xs font-bold text-blue-400 truncate max-w-[12ch]" title={client.generatorName}>{client.generatorName || 'Não selecionada'}</p>
                             </div>
                             <div className="space-y-1">
                                 <p className="text-[9px] font-black text-white/20 uppercase tracking-widest">Adesão</p>
@@ -113,16 +127,19 @@ const ClientsTab: React.FC<ClientsTabProps> = ({ clients, onEditClient, onDelete
                                 </button>
                             )}
 
-                            {/* Approve Button - only show if pending */}
-                            {(client.status === 'pending_approval' || client.status === 'pending') && (
-                                <button
-                                    onClick={() => onApproveClient(client.id)}
-                                    className="size-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-400/60 hover:text-emerald-400 hover:bg-emerald-500/20 transition-all group/btn"
-                                    title="Aprovar Cadastro"
-                                >
-                                    <span className="material-symbols-outlined text-sm group-hover/btn:scale-110 transition-transform">check_circle</span>
-                                </button>
-                            )}
+                            {/* Toggle Status Button (Activate/Pause) */}
+                            <button
+                                onClick={() => onUpdateClient(client.id, { status: client.status === 'active' || client.status === 'approved' ? 'pending_approval' : 'approved' })}
+                                className={`size-12 rounded-2xl flex items-center justify-center transition-all group/btn ${client.status === 'active' || client.status === 'approved'
+                                    ? 'bg-amber-500/10 text-amber-500/60 hover:text-amber-500 hover:bg-amber-500/20'
+                                    : 'bg-emerald-500/10 text-emerald-500/60 hover:text-emerald-500 hover:bg-emerald-500/20'
+                                    }`}
+                                title={client.status === 'active' || client.status === 'approved' ? 'Pausar Cliente' : 'Ativar Cliente'}
+                            >
+                                <span className="material-symbols-outlined text-sm group-hover/btn:scale-110 transition-transform">
+                                    {client.status === 'active' || client.status === 'approved' ? 'pause_circle' : 'play_circle'}
+                                </span>
+                            </button>
 
                             {/* Edit Button */}
                             <button

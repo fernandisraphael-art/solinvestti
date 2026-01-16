@@ -32,6 +32,7 @@ interface AdminDashboardProps {
   onDeleteClient: (id: string) => void;
   onUpdateClient: (id: string, updates: any) => void;
   onApproveClient: (id: string) => void;
+  onActivateAllClients: () => Promise<void>;
   concessionaires: Concessionaire[];
   onAddConcessionaire: (c: Concessionaire) => void;
   onUpdateConcessionaire: (id: string, data: Partial<Concessionaire>) => void;
@@ -50,6 +51,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onDeleteClient,
   onUpdateClient,
   onApproveClient,
+  onActivateAllClients,
   concessionaires,
   onAddConcessionaire,
   onUpdateConcessionaire,
@@ -60,12 +62,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [activeTab, setActiveTab] = useState('overview');
   const [showToast, setShowToast] = useState<{ show: boolean, msg: string, type?: 'info' | 'error' }>({ show: false, msg: '' });
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
-
-  console.log('AdminDashboard Render:', {
-    activeTab,
-    genCount: generators?.length,
-    clientCount: clients?.length
-  });
 
   const [isSearchingWeb, setIsSearchingWeb] = useState(false);
   const [searchCity, setSearchCity] = useState('');
@@ -369,6 +365,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 }
               }}
               onApproveClient={onApproveClient}
+              onUpdateClient={onUpdateClient}
+              onActivateAll={onActivateAllClients}
             />
           )}
         </div>

@@ -5,11 +5,7 @@ import { UserRole, EnergyProvider, Concessionaire } from '../../types';
 export const AdminService = {
     async fetchGenerators() {
         const { data, error } = await supabase.from('generators').select('*').order('name', { ascending: true });
-        if (error) {
-            console.error('AdminService: fetchGenerators error:', error);
-            throw error;
-        }
-        console.log('AdminService: raw generators data:', data);
+        if (error) throw error;
         // Map snake_case to camelCase for frontend
         return data?.map(g => ({
             ...g,
@@ -52,22 +48,22 @@ export const AdminService = {
 
     async fetchConcessionaires() {
         const { data, error } = await supabase.from('concessionaires').select('*');
-        if (error) {
-            console.error('AdminService: fetchConcessionaires error:', error);
-            throw error;
-        }
-        console.log('AdminService: raw concessionaires data:', data);
+        if (error) throw error;
         return data;
     },
 
     async fetchClients() {
-        const { data, error } = await supabase.from('clients').select('*');
-        if (error) {
-            console.error('AdminService: fetchClients error:', error);
-            throw error;
-        }
-        console.log('AdminService: raw clients data:', data);
-        return data;
+        const { data, error } = await supabase
+            .from('clients')
+            .select('*, generators(name)');
+
+        if (error) throw error;
+
+        // Flatten the join result for easier consumption
+        return data?.map(c => ({
+            ...c,
+            generatorName: (c as any).generators?.name || 'Não selecionada'
+        })) || [];
     },
 
     async addGenerator(gen: any) {
@@ -144,6 +140,57 @@ export const AdminService = {
         if (error) throw error;
     },
 
+    async sendApprovalEmail(clientName: string, clientEmail: string) {
+        const apiKey = (import.meta as any).env.VITE_RESEND_API_KEY;
+        if (!apiKey) {
+            console.warn('Resend API key missing. Email not sent.');
+            return;
+        }
+
+        try {
+            const response = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    from: 'Solinvestti <onboarding@resend.dev>',
+                    to: [clientEmail],
+                    subject: 'Solinvestti | Seu cadastro foi aprovado! 💡',
+                    html: `
+                        <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; rounded: 10px;">
+                            <h2 style="color: #0c112b;">Olá ${clientName}, temos ótimas notícias!</h2>
+                            <p style="font-size: 16px; line-height: 1.6;">Seu cadastro na <strong>Solinvestti</strong> foi aprovado com sucesso.</p>
+                            <p style="font-size: 16px; line-height: 1.6;">Em breve, a geradora de energia selecionada entrará em contato para encaminhar os contratos para sua assinatura.</p>
+                            <p style="font-size: 16px; line-height: 1.6;">Seja bem-vindo à economia inteligente!</p>
+                            <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+                            <p style="font-size: 12px; color: #999;">Esta é uma mensagem automática da Solinvestti.</p>
+                        </div>
+                    `
+                })
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                console.error('Failed to send email:', err);
+            }
+        } catch (error) {
+            console.error('Error sending email:', error);
+        }
+    },
+
+    async approveClient(client: any) {
+        // 1. Update DB
+        const { error } = await supabase.from('clients').update({ status: 'approved' }).eq('id', client.id);
+        if (error) throw error;
+
+        // 2. Send Email
+        if (client.email) {
+            await this.sendApprovalEmail(client.name, client.email);
+        }
+    },
+
     async updateConcessionaire(id: string, updates: any) {
         const { error } = await supabase.from('concessionaires').update(updates).eq('id', id);
         if (error) throw error;
@@ -161,6 +208,15 @@ export const AdminService = {
         const { data, error } = await supabase.rpc('activate_all_generators');
         if (error) throw error;
         return data;
+    },
+
+    async activateAllClients() {
+        const { error } = await supabase
+            .from('clients')
+            .update({ status: 'approved' })
+            .eq('status', 'pending_approval');
+
+        if (error) throw error;
     },
 
     async resetDatabase() {
