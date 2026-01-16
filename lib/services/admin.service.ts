@@ -5,7 +5,11 @@ import { UserRole, EnergyProvider, Concessionaire } from '../../types';
 export const AdminService = {
     async fetchGenerators() {
         const { data, error } = await supabase.from('generators').select('*').order('name', { ascending: true });
-        if (error) throw error;
+        if (error) {
+            console.error('AdminService: fetchGenerators error:', error);
+            throw error;
+        }
+        console.log('AdminService: raw generators data:', data);
         // Map snake_case to camelCase for frontend
         return data?.map(g => ({
             ...g,
@@ -48,13 +52,21 @@ export const AdminService = {
 
     async fetchConcessionaires() {
         const { data, error } = await supabase.from('concessionaires').select('*');
-        if (error) throw error;
+        if (error) {
+            console.error('AdminService: fetchConcessionaires error:', error);
+            throw error;
+        }
+        console.log('AdminService: raw concessionaires data:', data);
         return data;
     },
 
     async fetchClients() {
         const { data, error } = await supabase.from('clients').select('*');
-        if (error) throw error;
+        if (error) {
+            console.error('AdminService: fetchClients error:', error);
+            throw error;
+        }
+        console.log('AdminService: raw clients data:', data);
         return data;
     },
 

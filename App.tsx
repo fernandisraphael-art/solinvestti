@@ -77,10 +77,10 @@ const App: React.FC = () => {
 
   const updateUserData = (newData: Partial<typeof userData>) => setUserData(prev => ({ ...prev, ...newData }));
 
-  const handleLogin = (role: UserRole, name: string) => {
+  const handleLogin = async (role: UserRole, name: string) => {
     setUser({ role, name });
     updateUserData({ name, isAlreadyRegistered: role === UserRole.CONSUMER });
-    refreshData();
+    await refreshData();
   };
 
   const handleClientRegistration = async (password?: string) => {
@@ -235,12 +235,66 @@ const App: React.FC = () => {
 
           <Route path="/generator/*" element={
             <ProtectedRoute allowedRole={UserRole.GENERATOR}>
-              <GeneratorDashboard
-                generatorData={{}} // To be handled by SystemContext/Auth in future
-                onUpdate={() => { }}
-                clients={[]}
-                negotiations={[]}
-              />
+              {(() => {
+                // Find generator by email or metadata
+                const currentGen = generators.find(g =>
+                  g.accessEmail === user?.email ||
+                  g.access_email === user?.email ||
+                  g.name?.toLowerCase() === user?.name?.toLowerCase() ||
+                  g.responsibleName?.toLowerCase() === user?.name?.toLowerCase()
+                );
+
+                // Filter clients where provider_id matches this generator
+                const genClients = clients.filter(c =>
+                  c.provider_id === currentGen?.id ||
+                  c.providerId === currentGen?.id
+                );
+
+                const activeClients = genClients.filter(c =>
+                  c.status === 'active' || c.status === 'approved'
+                ).map(c => ({
+                  id: c.id,
+                  name: c.name,
+                  status: 'Ativo',
+                  billValue: c.bill_value || c.billValue || 0,
+                  date: new Date(c.created_at || Date.now()).toLocaleDateString('pt-BR')
+                }));
+
+                const pendingNegotiations = genClients.filter(c =>
+                  c.status !== 'active' && c.status !== 'approved'
+                ).map(c => ({
+                  id: c.id,
+                  name: c.name,
+                  status: c.status === 'pending_approval' ? 'Análise de Crédito' : 'Aguardando Documentação',
+                  billValue: c.bill_value || c.billValue || 0,
+                  date: new Date(c.created_at || Date.now()).toLocaleDateString('pt-BR')
+                }));
+
+                return (
+                  <GeneratorDashboard
+                    generatorData={{
+                      contactName: currentGen?.responsibleName || currentGen?.responsible_name || user?.name || '',
+                      socialName: currentGen?.name || '',
+                      cnpj: (currentGen as any)?.cnpj || '',
+                      energyCapacity: String(currentGen?.capacity || '0'),
+                      locationState: currentGen?.region?.split('/')?.[1]?.trim() || currentGen?.state || 'MG',
+                      locationCity: currentGen?.region?.split('/')?.[0]?.trim() || currentGen?.city || 'Sua Cidade',
+                      discount: currentGen?.discount || 15,
+                      commission: currentGen?.commission || 5,
+                      agreements: '',
+                      logoUrl: currentGen?.logoUrl || (currentGen as any)?.logo_url
+                    }}
+                    onUpdate={async (updates) => {
+                      if (currentGen?.id) {
+                        await AdminService.updateGenerator(currentGen.id, updates);
+                        await refreshData();
+                      }
+                    }}
+                    clients={activeClients}
+                    negotiations={pendingNegotiations}
+                  />
+                );
+              })()}
             </ProtectedRoute>
           } />
 

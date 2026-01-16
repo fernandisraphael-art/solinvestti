@@ -126,7 +126,10 @@ const ClientsTab: React.FC<ClientsTabProps> = ({ clients, onEditClient, onDelete
 
                             {/* Edit Button */}
                             <button
-                                onClick={() => onEditClient(client)}
+                                onClick={() => {
+                                    console.log('Edit button clicked for client:', client.name);
+                                    onEditClient(client);
+                                }}
                                 className="size-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all group/btn"
                                 title="Editar"
                             >

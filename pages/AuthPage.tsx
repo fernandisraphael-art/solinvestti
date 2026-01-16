@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { UserRole } from '../types';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 interface AuthPageProps {
   onLogin: (role: UserRole, name: string) => void;
@@ -36,7 +37,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, fixedRole }) => {
         if (activeRole === UserRole.ADMIN &&
           (formData.email === 'admin' || formData.email === 'admin@solinvestti.com.br') &&
           formData.password === 'admin') {
-          onLogin(UserRole.ADMIN, 'Administrador');
+          await onLogin(UserRole.ADMIN, 'Administrador');
           redirectUser(UserRole.ADMIN);
           return;
         }
@@ -59,7 +60,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, fixedRole }) => {
 
           if (genUser) {
             console.log('Found user in generators table:', genUser.name);
-            onLogin(UserRole.GENERATOR, genUser.name);
+            await onLogin(UserRole.GENERATOR, genUser.name);
             redirectUser(UserRole.GENERATOR);
             return;
           }
@@ -96,7 +97,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, fixedRole }) => {
             }
 
             // Retry login flow with recovered data
-            onLogin(role as UserRole, full_name);
+            await onLogin(role as UserRole, full_name);
             redirectUser(role as UserRole);
             return;
           }
@@ -104,7 +105,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, fixedRole }) => {
           throw new Error('Perfil não encontrado. Por favor, complete seu cadastro.');
         }
 
-        onLogin(profile.role as UserRole, profile.name || formData.email.split('@')[0]);
+        await onLogin(profile.role as UserRole, profile.name || formData.email.split('@')[0]);
         redirectUser(profile.role as UserRole);
 
       } else {
@@ -146,7 +147,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, fixedRole }) => {
           return;
         }
 
-        onLogin(activeRole, formData.name);
+        await onLogin(activeRole, formData.name);
         redirectUser(activeRole);
       }
     } catch (err: any) {
@@ -156,6 +157,17 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, fixedRole }) => {
       setIsProcessing(false);
     }
   };
+
+  const { user, loading } = useAuth();
+
+  React.useEffect(() => {
+    if (!loading && user) {
+      // If user is already logged in with the requested role (or any role if no fixedRole), redirect
+      if (!fixedRole || user.role === fixedRole) {
+        redirectUser(user.role);
+      }
+    }
+  }, [user, loading, fixedRole]);
 
   const redirectUser = (role: UserRole) => {
     if (role === UserRole.ADMIN) {

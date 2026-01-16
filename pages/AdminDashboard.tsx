@@ -18,6 +18,7 @@ import ConcessionairesTab from './admin/ConcessionairesTab';
 import SettingsTab from './admin/SettingsTab';
 import ProspectorTab from './admin/ProspectorTab';
 import GeneratorModal from './admin/GeneratorModal';
+import ClientModal from './admin/ClientModal';
 
 interface AdminDashboardProps {
   generators: EnergyProvider[];
@@ -59,6 +60,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [activeTab, setActiveTab] = useState('overview');
   const [showToast, setShowToast] = useState<{ show: boolean, msg: string, type?: 'info' | 'error' }>({ show: false, msg: '' });
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+
+  console.log('AdminDashboard Render:', {
+    activeTab,
+    genCount: generators?.length,
+    clientCount: clients?.length
+  });
 
   const [isSearchingWeb, setIsSearchingWeb] = useState(false);
   const [searchCity, setSearchCity] = useState('');
@@ -339,50 +346,84 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             />
           )}
 
-          {activeTab === 'clients' && <ClientsTab clients={clients} onEditClient={setEditingClient} onDeleteClient={onDeleteClient} onApproveClient={onApproveClient} />}
-
-          {activeTab === 'concessionaires' && <ConcessionairesTab concessionaires={concessionaires} onEdit={() => { }} onAdd={() => { }} />}
+          {activeTab === 'concessionaires' && (
+            <ConcessionairesTab
+              concessionaires={concessionaires}
+              onEdit={() => { }}
+              onAdd={() => { }}
+            />
+          )}
 
           {activeTab === 'settings' && <SettingsTab onReset={() => setIsResetModalOpen(true)} />}
+
+          {activeTab === 'clients' && (
+            <ClientsTab
+              clients={clients}
+              onEditClient={(client) => {
+                console.log('AdminDashboard: setting editingClient to:', client?.name);
+                setEditingClient(client);
+              }}
+              onDeleteClient={(id) => {
+                if (window.confirm('Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita.')) {
+                  onDeleteClient(id);
+                }
+              }}
+              onApproveClient={onApproveClient}
+            />
+          )}
         </div>
+      </main>
 
-        {editingGenerator && (
-          <GeneratorModal
-            generator={editingGenerator}
-            onClose={() => setEditingGenerator(null)}
-            onSmartFill={handleSmartFill}
-            onSave={(data) => {
-              if (data.id) onUpdateGenerator(data.id, data);
-              else onAddGenerator(data);
-              setEditingGenerator(null);
-              triggerToast('Salvo com sucesso!');
-            }}
-            onUpdateField={(f, v) => setEditingGenerator(prev => prev ? ({ ...prev, [f]: v }) : null)}
-          />
-        )}
+      {/* Modals outside main for safety */}
+      {editingGenerator && (
+        <GeneratorModal
+          generator={editingGenerator}
+          onClose={() => setEditingGenerator(null)}
+          onSmartFill={handleSmartFill}
+          onSave={(data) => {
+            if (data.id) onUpdateGenerator(data.id, data);
+            else onAddGenerator(data);
+            setEditingGenerator(null);
+            triggerToast('Salvo com sucesso!');
+          }}
+          onUpdateField={(f, v) => setEditingGenerator(prev => prev ? ({ ...prev, [f]: v }) : null)}
+        />
+      )}
 
-        {isResetModalOpen && (
-          <div className="fixed inset-0 bg-brand-deep/80 backdrop-blur-xl z-[70] flex items-center justify-center p-6">
-            <div className="bg-[#0F172A] border border-red-500/20 w-full max-w-lg rounded-[3rem] p-12 text-center shadow-2xl">
-              <h3 className="text-2xl font-black text-white mb-4">Hard Reset</h3>
-              <p className="text-white/40 mb-8">Esta ação apagará todos os dados. Tem certeza?</p>
-              <div className="flex gap-4">
-                <button onClick={() => setIsResetModalOpen(false)} className="flex-1 py-4 bg-white/5 rounded-2xl font-bold uppercase text-[10px]">Cancelar</button>
-                <button onClick={() => { onReset(); setIsResetModalOpen(false); }} className="flex-1 py-4 bg-red-500 text-white rounded-2xl font-bold uppercase text-[10px]">Confirmar Reset</button>
-              </div>
+      {editingClient && (
+        <ClientModal
+          client={editingClient}
+          onClose={() => setEditingClient(null)}
+          onSave={(id, updates) => {
+            console.log('AdminDashboard: onSave for client:', id);
+            onUpdateClient(id, updates);
+            setEditingClient(null);
+            triggerToast('Dados do cliente atualizados!');
+          }}
+        />
+      )}
+
+      {isResetModalOpen && (
+        <div className="fixed inset-0 bg-brand-deep/80 backdrop-blur-xl z-[70] flex items-center justify-center p-6">
+          <div className="bg-[#0F172A] border border-red-500/20 w-full max-w-lg rounded-[3rem] p-12 text-center shadow-2xl">
+            <h3 className="text-2xl font-black text-white mb-4">Hard Reset</h3>
+            <p className="text-white/40 mb-8">Esta ação apagará todos os dados. Tem certeza?</p>
+            <div className="flex gap-4">
+              <button onClick={() => setIsResetModalOpen(false)} className="flex-1 py-4 bg-white/5 rounded-2xl font-bold uppercase text-[10px]">Cancelar</button>
+              <button onClick={() => { onReset(); setIsResetModalOpen(false); }} className="flex-1 py-4 bg-red-500 text-white rounded-2xl font-bold uppercase text-[10px]">Confirmar Reset</button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Hidden inputs */}
-        <input type="file" ref={manualUploadRef} className="hidden" onChange={handleManualUpload} accept=".xlsx,.csv" />
+      {showToast.show && (
+        <div className={`fixed bottom-10 right-10 px-8 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest animate-in slide-in-from-right-10 duration-300 z-[100] ${showToast.type === 'error' ? 'bg-red-500 text-white' : 'bg-primary text-brand-navy shadow-lg shadow-primary/20'}`}>
+          {showToast.msg}
+        </div>
+      )}
 
-        {showToast.show && (
-          <div className={`fixed bottom-10 right-10 px-8 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest animate-in slide-in-from-right-10 duration-300 z-[100] ${showToast.type === 'error' ? 'bg-red-500 text-white' : 'bg-primary text-brand-navy shadow-lg shadow-primary/20'}`}>
-            {showToast.msg}
-          </div>
-        )}
-      </main>
+      {/* Hidden inputs moved inside main container or just before closing div */}
+      <input type="file" ref={manualUploadRef} className="hidden" onChange={handleManualUpload} accept=".xlsx,.csv" />
     </div>
   );
 };
