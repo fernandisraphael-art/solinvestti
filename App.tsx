@@ -120,8 +120,13 @@ const App: React.FC = () => {
       // 2. Upload Bill if exists
       let billUrl = null;
       if (userData.energyBillFile) {
-        const path = `bills/${Date.now()}_${userData.name.replace(/\s/g, '_')}.pdf`;
-        billUrl = await uploadFile(userData.energyBillFile, path);
+        try {
+          const path = `bills/${Date.now()}_${userData.name.replace(/\s/g, '_')}.pdf`;
+          billUrl = await uploadFile(userData.energyBillFile, path);
+        } catch (uploadErr) {
+          console.warn("Upload failed but continuing registration:", uploadErr);
+          // Don't throw, let the registration proceed even without the file if bucket is missing
+        }
       }
 
       // 3. Insert into 'clients' table (this is the critical part)
@@ -144,18 +149,32 @@ const App: React.FC = () => {
         consumption: Number((cleanBill / 0.85).toFixed(2)),
         provider_id: userData.selectedProvider?.id,
         status: 'pending_approval',
-        investment_partner_id: userData.investmentPartner?.id,
+        investment_partner_id: userData.investmentPartner?.id, // This is now a UUID
         bill_url: billUrl,
         user_id: userId // May be null if auth failed, that's OK
       });
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        console.error("Database Error details:", dbError);
+        throw new Error(`Erro no banco de dados: ${dbError.message}`);
+      }
+
+      // Refresh global state so admin sees the new client immediately
+      refreshData();
 
       return { success: true, needsConfirmation: false };
 
     } catch (err: any) {
-      console.error("Registration Error:", err);
-      alert(`Erro ao registrar: ${err.message}`);
+      console.error("Registration Error Final:", err);
+      // More user friendly error messages
+      let userMsg = "Erro inesperado ao finalizar seu cadastro.";
+      if (err.message?.includes("uuid")) {
+        userMsg = "Erro interno de configuração de dados (ID inválido). Por favor, tente novamente.";
+      } else if (err.message) {
+        userMsg = err.message;
+      }
+
+      alert(userMsg);
       throw err;
     }
   };

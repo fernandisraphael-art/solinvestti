@@ -48,8 +48,9 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
         setNeedsEmailAuth(true);
       }
       setSuccess(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error finalizing:", error);
+      alert(`Falha ao finalizar cadastro: ${error.message || 'Erro inesperado'}`);
     } finally {
       setIsFinalizing(false);
     }

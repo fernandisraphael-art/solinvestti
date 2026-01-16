@@ -25,6 +25,13 @@ const ClientsTab: React.FC<ClientsTabProps> = ({ clients, onEditClient, onDelete
         }
     };
 
+
+    const formatCurrency = (value: any) => {
+        // Handle values that might come as strings from DB or manual input
+        const num = typeof value === 'string' ? parseFloat(value.replace('R$', '').replace(/\./g, '').replace(',', '.')) : value;
+        return (num || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
     const getStatusLabel = (status: string) => {
         switch (status) {
             case 'active':
@@ -34,20 +41,17 @@ const ClientsTab: React.FC<ClientsTabProps> = ({ clients, onEditClient, onDelete
                 return 'Pendente';
             case 'rejected':
                 return 'Rejeitado';
+            case 'pending':
+                return 'Aguardando';
             default:
                 return status;
         }
     };
 
-    const formatCurrency = (value: number) => {
-        // Ensure proper formatting - the value is already in the correct unit from DB
-        return value?.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0,00';
-    };
-
     const handleDownloadBill = (billUrl: string, clientName: string) => {
         const link = document.createElement('a');
         link.href = billUrl;
-        link.download = `fatura_${clientName.replace(/\s/g, '_')}.pdf`;
+        link.download = `fatura_${clientName.replace(/\s/g, '_')}`;
         link.target = '_blank';
         document.body.appendChild(link);
         link.click();
@@ -83,11 +87,11 @@ const ClientsTab: React.FC<ClientsTabProps> = ({ clients, onEditClient, onDelete
                             </div>
                             <div className="space-y-1">
                                 <p className="text-[9px] font-black text-white/20 uppercase tracking-widest">Valor da Conta</p>
-                                <p className="text-xs font-bold text-primary">R$ {formatCurrency(client.billValue)}</p>
+                                <p className="text-xs font-bold text-primary">R$ {formatCurrency(client.bill_value || client.billValue)}</p>
                             </div>
                             <div className="space-y-1">
                                 <p className="text-[9px] font-black text-white/20 uppercase tracking-widest">Adesão</p>
-                                <p className="text-xs font-bold text-white/80">{client.date}</p>
+                                <p className="text-xs font-bold text-white/80">{client.created_at ? new Date(client.created_at).toLocaleDateString('pt-BR') : client.date}</p>
                             </div>
                             <div className="space-y-1">
                                 <p className="text-[9px] font-black text-white/20 uppercase tracking-widest">Status</p>
@@ -110,7 +114,7 @@ const ClientsTab: React.FC<ClientsTabProps> = ({ clients, onEditClient, onDelete
                             )}
 
                             {/* Approve Button - only show if pending */}
-                            {client.status === 'pending_approval' && (
+                            {(client.status === 'pending_approval' || client.status === 'pending') && (
                                 <button
                                     onClick={() => onApproveClient(client.id)}
                                     className="size-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-400/60 hover:text-emerald-400 hover:bg-emerald-500/20 transition-all group/btn"
@@ -155,41 +159,49 @@ const ClientsTab: React.FC<ClientsTabProps> = ({ clients, onEditClient, onDelete
             {/* Bill Viewer Modal */}
             {viewingBill && (
                 <div className="fixed inset-0 bg-brand-deep/90 backdrop-blur-xl z-[70] flex items-center justify-center p-6">
-                    <div className="bg-[#0F172A] border border-white/10 w-full max-w-4xl h-[80vh] rounded-[3rem] p-8 shadow-2xl flex flex-col">
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xl font-black text-white flex items-center gap-3">
-                                <span className="material-symbols-outlined text-primary">description</span>
-                                Fatura de Energia
-                            </h3>
-                            <div className="flex gap-3">
+                    <div className="bg-[#0F172A] border border-white/10 w-full max-w-4xl h-[85vh] rounded-[3.5rem] p-8 shadow-2xl flex flex-col relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -mr-32 -mt-32"></div>
+
+                        <div className="flex justify-between items-center mb-8 relative z-10">
+                            <div>
+                                <h3 className="text-2xl font-display font-black text-white flex items-center gap-4">
+                                    <div className="size-10 rounded-xl bg-primary/20 text-primary flex items-center justify-center">
+                                        <span className="material-symbols-outlined text-xl">description</span>
+                                    </div>
+                                    Fatura de Energia
+                                </h3>
+                                <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mt-1 ml-14">Documento de Comprovação de Consumo</p>
+                            </div>
+                            <div className="flex gap-4">
                                 <button
-                                    onClick={() => handleDownloadBill(viewingBill, 'cliente')}
-                                    className="px-6 py-3 bg-primary/10 text-primary rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-primary/20 transition-colors flex items-center gap-2"
+                                    onClick={() => handleDownloadBill(viewingBill, 'fatura')}
+                                    className="px-8 py-4 bg-primary text-brand-navy rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] hover:scale-105 active:scale-95 transition-all flex items-center gap-3 shadow-xl shadow-primary/20"
                                 >
                                     <span className="material-symbols-outlined text-sm">download</span>
-                                    Baixar
+                                    Baixar Arquivo
                                 </button>
                                 <button
                                     onClick={() => setViewingBill(null)}
-                                    className="size-12 bg-white/5 rounded-2xl flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all"
+                                    className="size-14 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all group"
                                 >
-                                    <span className="material-symbols-outlined">close</span>
+                                    <span className="material-symbols-outlined group-hover:rotate-90 transition-transform">close</span>
                                 </button>
                             </div>
                         </div>
-                        <div className="flex-1 bg-white rounded-2xl overflow-hidden">
-                            {viewingBill.startsWith('data:image') ? (
-                                <img src={viewingBill} alt="Fatura" className="w-full h-full object-contain" />
+
+                        <div className="flex-1 bg-white/[0.02] border border-white/5 rounded-[2.5rem] overflow-hidden relative group/viewer shadow-inner">
+                            {viewingBill.startsWith('data:image') || viewingBill.includes('.jpg') || viewingBill.includes('.png') ? (
+                                <div className="w-full h-full flex items-center justify-center p-4">
+                                    <img src={viewingBill} alt="Fatura" className="max-w-full max-h-full object-contain rounded-xl shadow-2xl" />
+                                </div>
                             ) : viewingBill.startsWith('data:application/pdf') || viewingBill.includes('.pdf') ? (
-                                <iframe src={viewingBill} className="w-full h-full" title="Fatura PDF" />
+                                <iframe src={viewingBill} className="w-full h-full bg-white" title="Fatura PDF" />
                             ) : (
-                                <div className="w-full h-full flex items-center justify-center text-slate-500">
-                                    <div className="text-center">
-                                        <span className="material-symbols-outlined text-6xl mb-4 block">description</span>
-                                        <p className="text-sm">Clique em "Baixar" para ver o arquivo</p>
-                                        <a href={viewingBill} target="_blank" rel="noopener noreferrer" className="text-primary underline text-sm mt-2 block">
-                                            Abrir em nova aba
-                                        </a>
+                                <div className="w-full h-full flex items-center justify-center text-white/20">
+                                    <div className="text-center group-hover:scale-110 transition-transform">
+                                        <span className="material-symbols-outlined text-8xl mb-6 block opacity-20">dock_to_bottom</span>
+                                        <p className="text-sm font-black uppercase tracking-widest">Visualização indisponível</p>
+                                        <p className="text-[10px] opacity-40 mt-2">Clique em "Baixar Arquivo" para visualizar</p>
                                     </div>
                                 </div>
                             )}

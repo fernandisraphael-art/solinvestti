@@ -5,7 +5,7 @@ import Logo from '../components/Logo';
 
 const PARTNERS = [
   {
-    id: 'xp',
+    id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479', // XP
     name: 'XP Investimentos',
     tagline: 'A maior corretora do Brasil',
     description: 'Acesse fundos exclusivos de infraestrutura e energia com a solidez da XP.',
@@ -13,7 +13,7 @@ const PARTNERS = [
     logo: 'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&q=80&w=100'
   },
   {
-    id: 'btg',
+    id: '550e8400-e29b-41d4-a716-446655440000', // BTG
     name: 'BTG Pactual',
     tagline: 'O maior banco de investimentos da AL',
     description: 'Expertise em ativos reais e gestão de patrimônio focada em resultados.',
@@ -21,7 +21,7 @@ const PARTNERS = [
     logo: 'https://images.unsplash.com/photo-1550565118-3d1428df7301?auto=format&fit=crop&q=80&w=100'
   },
   {
-    id: 'genial',
+    id: '6ba7b810-9dad-11d1-80b4-00c04fd430c8', // Genial
     name: 'Genial Investimentos',
     tagline: 'Sua vida financeira levada a sério',
     description: 'Plataforma intuitiva e taxas competitivas para pequenos e grandes investidores.',
@@ -29,7 +29,7 @@ const PARTNERS = [
     logo: 'https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&q=80&w=100'
   },
   {
-    id: 'tsr',
+    id: 'ad6960d7-756d-498c-8438-2d88688487e8', // TSR
     name: 'TSR Investimentos',
     tagline: 'Soluções financeiras de alta performance',
     description: 'Acesse estratégias profissionais e potencialize seus ganhos com a TSR.',

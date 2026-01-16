@@ -8,13 +8,12 @@ const AdminControls: React.FC = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
+    const { maintenanceMode } = useSystem();
 
     // Only show for Admins
     if (user?.role !== UserRole.ADMIN) return null;
 
     // Per user request: Only show the "Painel Admin" shortcut when Maintenance Mode is ON.
-    // "quando o usuario desabilidar esse botal suma com o atalho das paginas"
-    const { maintenanceMode } = useSystem();
     if (!maintenanceMode) return null;
 
     // Optional: Hide if already on admin dashboard (to avoid redundancy, or keep it to allow "refresh"/return to root admin)
