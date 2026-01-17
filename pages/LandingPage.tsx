@@ -16,9 +16,6 @@ const LandingPage: React.FC = () => {
             <Link to="/auth" className="text-brand-navy font-bold text-[11px] uppercase tracking-widest px-4 hover:text-primary transition-colors">
               Entrar
             </Link>
-            <Link to="/admin-login" className="hidden sm:block text-slate-300 font-bold text-[10px] uppercase tracking-widest px-4 hover:text-brand-navy transition-colors">
-              Admin
-            </Link>
           </div>
         </div>
       </nav>
@@ -118,8 +115,8 @@ const LandingPage: React.FC = () => {
           </div>
           <div className="mt-20 pt-10 border-t border-slate-50 text-center flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-[10px] font-bold text-brand-slate uppercase tracking-widest">© 2024 SOLINVESTTI Finance & Energy. Todos os direitos reservados.</p>
-            <Link to="/admin-login" className="text-[9px] font-black text-slate-300 uppercase tracking-widest hover:text-brand-navy transition-colors">
-              Acesso Administrativo
+            <Link to="/admin-login" className="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em] hover:text-brand-navy transition-colors">
+              Admin
             </Link>
           </div>
         </div>

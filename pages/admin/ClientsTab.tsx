@@ -1,5 +1,5 @@
-
 import React, { useState } from 'react';
+import { supabase } from '../../lib/supabase';
 
 interface ClientsTabProps {
     clients: any[];
@@ -51,13 +51,16 @@ const ClientsTab: React.FC<ClientsTabProps> = ({ clients, onEditClient, onDelete
     };
 
     const handleDownloadBill = (billUrl: string, clientName: string) => {
-        const link = document.createElement('a');
-        link.href = billUrl;
-        link.download = `fatura_${clientName.replace(/\s/g, '_')}`;
-        link.target = '_blank';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const url = getBillUrl(billUrl);
+        window.open(url, '_blank');
+    };
+
+
+    const getBillUrl = (path: string) => {
+        if (!path) return '';
+        if (path.startsWith('http') || path.startsWith('data:')) return path;
+        const { data } = supabase.storage.from('documents').getPublicUrl(path);
+        return data.publicUrl;
     };
 
     return (
@@ -109,23 +112,24 @@ const ClientsTab: React.FC<ClientsTabProps> = ({ clients, onEditClient, onDelete
                             </div>
                             <div className="space-y-1">
                                 <p className="text-[9px] font-black text-white/20 uppercase tracking-widest">Status</p>
-                                <span className={`inline-flex px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${getStatusStyle(client.status)}`}>
-                                    {getStatusLabel(client.status)}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                    {client.bill_url && (
+                                        <button
+                                            onClick={() => setViewingBill(client.bill_url)}
+                                            className="size-7 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400 hover:text-blue-300 hover:bg-blue-500/20 transition-all group/bill"
+                                            title="Ver Fatura"
+                                        >
+                                            <span className="material-symbols-outlined text-base group-hover/bill:scale-110 transition-transform">receipt_long</span>
+                                        </button>
+                                    )}
+                                    <span className={`inline-flex px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${getStatusStyle(client.status)}`}>
+                                        {getStatusLabel(client.status)}
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
                         <div className="flex items-center gap-3 lg:w-auto justify-end flex-wrap">
-                            {/* View/Download Bill Button */}
-                            {client.bill_url && (
-                                <button
-                                    onClick={() => setViewingBill(client.bill_url)}
-                                    className="size-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-400/60 hover:text-blue-400 hover:bg-blue-500/20 transition-all group/btn"
-                                    title="Ver Fatura"
-                                >
-                                    <span className="material-symbols-outlined text-sm group-hover/btn:scale-110 transition-transform">receipt_long</span>
-                                </button>
-                            )}
 
                             {/* Toggle Status Button (Activate/Pause) */}
                             <button
@@ -210,22 +214,42 @@ const ClientsTab: React.FC<ClientsTabProps> = ({ clients, onEditClient, onDelete
                         </div>
 
                         <div className="flex-1 bg-white/[0.02] border border-white/5 rounded-[2.5rem] overflow-hidden relative group/viewer shadow-inner">
-                            {viewingBill.startsWith('data:image') || viewingBill.includes('.jpg') || viewingBill.includes('.png') ? (
-                                <div className="w-full h-full flex items-center justify-center p-4">
-                                    <img src={viewingBill} alt="Fatura" className="max-w-full max-h-full object-contain rounded-xl shadow-2xl" />
-                                </div>
-                            ) : viewingBill.startsWith('data:application/pdf') || viewingBill.includes('.pdf') ? (
-                                <iframe src={viewingBill} className="w-full h-full bg-white" title="Fatura PDF" />
-                            ) : (
-                                <div className="w-full h-full flex items-center justify-center text-white/20">
-                                    <div className="text-center group-hover:scale-110 transition-transform">
-                                        <span className="material-symbols-outlined text-8xl mb-6 block opacity-20">dock_to_bottom</span>
-                                        <p className="text-sm font-black uppercase tracking-widest">Visualização indisponível</p>
-                                        <p className="text-[10px] opacity-40 mt-2">Clique em "Baixar Arquivo" para visualizar</p>
-                                    </div>
-                                </div>
-                            )}
+                            {(() => {
+                                const url = getBillUrl(viewingBill);
+                                console.log('Bill URL:', url, 'Original:', viewingBill);
+                                const isImage = url.startsWith('data:image') ||
+                                    /\.(jpg|jpeg|png|gif|webp)/i.test(url) ||
+                                    (url.startsWith('http') && !url.toLowerCase().includes('.pdf'));
+                                const isPdf = url.startsWith('data:application/pdf') || /\.pdf/i.test(url);
+
+                                if (isImage) {
+                                    return (
+                                        <div className="w-full h-full flex items-center justify-center p-4">
+                                            <img
+                                                src={url}
+                                                alt="Fatura"
+                                                className="max-w-full max-h-full object-contain rounded-xl shadow-2xl"
+                                                onError={(e) => console.error('Image failed to load:', url, e)}
+                                            />
+                                        </div>
+                                    );
+                                } else if (isPdf) {
+                                    return <iframe src={url} className="w-full h-full bg-white" title="Fatura PDF" />;
+
+                                } else {
+                                    return (
+                                        <div className="w-full h-full flex items-center justify-center text-white/20">
+                                            <div className="text-center group-hover:scale-110 transition-transform">
+                                                <span className="material-symbols-outlined text-8xl mb-6 block opacity-20">dock_to_bottom</span>
+                                                <p className="text-sm font-black uppercase tracking-widest">Visualização indisponível</p>
+                                                <p className="text-[10px] opacity-40 mt-2">Clique em "Baixar Arquivo" para visualizar</p>
+                                            </div>
+                                        </div>
+                                    );
+                                }
+                            })()}
                         </div>
+
                     </div>
                 </div>
             )}
