@@ -45,16 +45,47 @@ import { supabase } from './lib/supabase';
 // Helper to upload file to Supabase Storage
 async function uploadFile(fileBase64: string, path: string) {
   try {
+    console.log('[Upload] Starting upload, path:', path);
+
+    // Convert base64 to blob
     const res = await fetch(fileBase64);
     const blob = await res.blob();
-    const { data, error } = await supabase.storage.from('documents').upload(path, blob);
-    if (error) throw error;
-    return data?.path;
+    console.log('[Upload] Blob created, size:', blob.size, 'type:', blob.type);
+
+    // Determine file extension from mime type
+    let finalPath = path;
+    if (blob.type.includes('image/')) {
+      const ext = blob.type.split('/')[1] || 'png';
+      finalPath = path.replace(/\.[^/.]+$/, `.${ext}`);
+    } else if (blob.type.includes('pdf')) {
+      finalPath = path.replace(/\.[^/.]+$/, '.pdf');
+    }
+    console.log('[Upload] Final path:', finalPath);
+
+    // Upload to Supabase Storage
+    const { data, error } = await supabase.storage.from('documents').upload(finalPath, blob, {
+      cacheControl: '3600',
+      upsert: true
+    });
+
+    if (error) {
+      console.error('[Upload] Supabase error:', error);
+      throw error;
+    }
+
+    console.log('[Upload] Success, data:', data);
+
+    // Get the public URL
+    const { data: urlData } = supabase.storage.from('documents').getPublicUrl(data.path);
+    console.log('[Upload] Public URL:', urlData.publicUrl);
+
+    return urlData.publicUrl;
   } catch (e) {
-    console.error('Upload failed:', e);
+    console.error('[Upload] Failed:', e);
     return null;
   }
 }
+
 
 const App: React.FC = () => {
   const { user, setUser, isLoading } = useAuth();

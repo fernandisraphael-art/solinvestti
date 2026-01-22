@@ -2,20 +2,79 @@
 import { supabase } from '../supabase';
 import { UserRole, EnergyProvider, Concessionaire } from '../../types';
 
+// Direct fetch helper for when SDK fails with AbortError
+async function directFetch<T>(table: string): Promise<T[]> {
+    const url = import.meta.env.VITE_SUPABASE_URL;
+    const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    if (!url || !key) {
+        console.error('[directFetch] Missing environment variables');
+        return [];
+    }
+
+    const response = await fetch(`${url}/rest/v1/${table}?select=*`, {
+        headers: {
+            'apikey': key,
+            'Authorization': `Bearer ${key}`,
+            'Content-Type': 'application/json'
+        }
+    });
+
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    return response.json();
+}
+
 export const AdminService = {
     async fetchGenerators() {
-        const { data, error } = await supabase.from('generators').select('*').order('name', { ascending: true });
-        if (error) throw error;
-        // Map snake_case to camelCase for frontend
-        return data?.map(g => ({
-            ...g,
-            responsibleName: g.responsible_name,
-            responsiblePhone: g.responsible_phone,
-            annualRevenue: g.annual_revenue,
-            estimatedSavings: g.estimated_savings,
-            accessEmail: g.access_email,
-            accessPassword: g.access_password
-        })) || [];
+        console.log('[AdminService.fetchGenerators] Starting fetch...');
+
+        // Try SDK first
+        if (supabase) {
+            try {
+                const { data, error } = await supabase.from('generators').select('*').order('name', { ascending: true });
+
+                if (!error && data) {
+                    console.log('[AdminService.fetchGenerators] SDK success, count:', data.length);
+                    return data?.map(g => ({
+                        ...g,
+                        responsibleName: g.responsible_name,
+                        responsiblePhone: g.responsible_phone,
+                        annualRevenue: g.annual_revenue,
+                        estimatedSavings: g.estimated_savings,
+                        accessEmail: g.access_email,
+                        accessPassword: g.access_password
+                    })) || [];
+                }
+
+                if (error) {
+                    console.warn('[AdminService.fetchGenerators] SDK error, trying fallback:', error.message);
+                }
+            } catch (err: any) {
+                console.warn('[AdminService.fetchGenerators] SDK exception, trying fallback:', err?.message);
+            }
+        }
+
+        // Fallback: Direct fetch
+        console.log('[AdminService.fetchGenerators] Using direct fetch fallback...');
+        try {
+            const data = await directFetch<any>('generators');
+            console.log('[AdminService.fetchGenerators] Direct fetch success, count:', data.length);
+            return data?.map(g => ({
+                ...g,
+                responsibleName: g.responsible_name,
+                responsiblePhone: g.responsible_phone,
+                annualRevenue: g.annual_revenue,
+                estimatedSavings: g.estimated_savings,
+                accessEmail: g.access_email,
+                accessPassword: g.access_password
+            })) || [];
+        } catch (fetchErr) {
+            console.error('[AdminService.fetchGenerators] Direct fetch failed:', fetchErr);
+            return [];
+        }
     },
 
     async batchAddGenerators(generators: EnergyProvider[]) {
@@ -47,23 +106,74 @@ export const AdminService = {
     },
 
     async fetchConcessionaires() {
-        const { data, error } = await supabase.from('concessionaires').select('*');
-        if (error) throw error;
-        return data;
+        console.log('[AdminService.fetchConcessionaires] Starting fetch...');
+
+        // Try SDK first
+        if (supabase) {
+            try {
+                const { data, error } = await supabase.from('concessionaires').select('*');
+                if (!error && data) {
+                    console.log('[AdminService.fetchConcessionaires] SDK success, count:', data.length);
+                    return data;
+                }
+                if (error) {
+                    console.warn('[AdminService.fetchConcessionaires] SDK error, trying fallback:', error.message);
+                }
+            } catch (err: any) {
+                console.warn('[AdminService.fetchConcessionaires] SDK exception, trying fallback:', err?.message);
+            }
+        }
+
+        // Fallback: Direct fetch
+        console.log('[AdminService.fetchConcessionaires] Using direct fetch fallback...');
+        try {
+            const data = await directFetch<any>('concessionaires');
+            console.log('[AdminService.fetchConcessionaires] Direct fetch success, count:', data.length);
+            return data || [];
+        } catch (fetchErr) {
+            console.error('[AdminService.fetchConcessionaires] Direct fetch failed:', fetchErr);
+            return [];
+        }
     },
 
     async fetchClients() {
-        const { data, error } = await supabase
-            .from('clients')
-            .select('*, generators(name)');
+        console.log('[AdminService.fetchClients] Starting fetch...');
 
-        if (error) throw error;
+        // Try SDK first
+        if (supabase) {
+            try {
+                const { data, error } = await supabase
+                    .from('clients')
+                    .select('*, generators(name)');
 
-        // Flatten the join result for easier consumption
-        return data?.map(c => ({
-            ...c,
-            generatorName: (c as any).generators?.name || 'Não selecionada'
-        })) || [];
+                if (!error && data) {
+                    console.log('[AdminService.fetchClients] SDK success, count:', data.length);
+                    return data?.map(c => ({
+                        ...c,
+                        generatorName: (c as any).generators?.name || 'Não selecionada'
+                    })) || [];
+                }
+                if (error) {
+                    console.warn('[AdminService.fetchClients] SDK error, trying fallback:', error.message);
+                }
+            } catch (err: any) {
+                console.warn('[AdminService.fetchClients] SDK exception, trying fallback:', err?.message);
+            }
+        }
+
+        // Fallback: Direct fetch (without join)
+        console.log('[AdminService.fetchClients] Using direct fetch fallback...');
+        try {
+            const data = await directFetch<any>('clients');
+            console.log('[AdminService.fetchClients] Direct fetch success, count:', data.length);
+            return data?.map(c => ({
+                ...c,
+                generatorName: 'Não selecionada' // Join not available in simple fetch
+            })) || [];
+        } catch (fetchErr) {
+            console.error('[AdminService.fetchClients] Direct fetch failed:', fetchErr);
+            return [];
+        }
     },
 
     async addGenerator(gen: any) {

@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { EnergyProvider, Concessionaire } from '../types';
 import { AdminService } from '../lib/services/admin.service';
 
@@ -21,6 +21,8 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const [clients, setClients] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [maintenanceMode, setMaintenanceMode] = useState(false);
+    const isMountedRef = useRef(true);
+    const retryCountRef = useRef(0);
 
     useEffect(() => {
         const stored = localStorage.getItem('solinvestti_maintenance');
@@ -34,13 +36,43 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     const refreshData = async () => {
+        if (!isMountedRef.current) return;
         setIsLoading(true);
+
         try {
-            const [genData, concData, clientData] = await Promise.all([
-                AdminService.fetchGenerators(),
-                AdminService.fetchConcessionaires(),
-                AdminService.fetchClients()
-            ]);
+            // Fetch each data type independently to prevent one failure from breaking all
+            let genData: any[] = [];
+            let concData: any[] = [];
+            let clientData: any[] = [];
+
+            // Helper to retry fetch on AbortError
+            const fetchWithRetry = async <T,>(
+                fetcher: () => Promise<T>,
+                maxRetries = 3
+            ): Promise<T | null> => {
+                for (let i = 0; i < maxRetries; i++) {
+                    try {
+                        return await fetcher();
+                    } catch (err: any) {
+                        if (err?.name === 'AbortError' || err?.message?.includes('AbortError')) {
+                            // Wait a bit before retrying
+                            await new Promise(resolve => setTimeout(resolve, 100 * (i + 1)));
+                            continue;
+                        }
+                        console.error('Fetch error:', err);
+                        return null;
+                    }
+                }
+                return null;
+            };
+
+            // Fetch with retry for each service
+            genData = (await fetchWithRetry(() => AdminService.fetchGenerators())) || [];
+            concData = (await fetchWithRetry(() => AdminService.fetchConcessionaires())) || [];
+            clientData = (await fetchWithRetry(() => AdminService.fetchClients())) || [];
+
+            // Only update state if component is still mounted
+            if (!isMountedRef.current) return;
 
             setGenerators(genData.map((g: any) => ({
                 ...g,
@@ -62,23 +94,41 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 website: g.website
             })));
 
-            setConcessionaires(concData);
-            setClients(clientData.map(c => ({
+            setConcessionaires(concData || []);
+            setClients((clientData || []).map(c => ({
                 ...c,
                 billValue: Number(c.bill_value),
-                date: new Date(c.created_at).toLocaleDateString('pt-BR'),
+                date: c.created_at ? new Date(c.created_at).toLocaleDateString('pt-BR') : 'N/A',
                 accessEmail: c.access_email,
                 accessPassword: c.access_password
             })));
-        } catch (err) {
-            console.error('System Refresh Error:', err);
+        } catch (err: any) {
+            // Only log non-abort errors
+            if (err?.name !== 'AbortError' && !err?.message?.includes('AbortError')) {
+                console.error('System Refresh Error:', err);
+            }
         } finally {
-            setIsLoading(false);
+            if (isMountedRef.current) {
+                setIsLoading(false);
+            }
         }
     };
 
     useEffect(() => {
-        refreshData();
+        isMountedRef.current = true;
+        retryCountRef.current = 0;
+
+        // Delay initial fetch slightly to avoid race condition with Supabase SDK initialization
+        const timeoutId = setTimeout(() => {
+            if (isMountedRef.current) {
+                refreshData();
+            }
+        }, 100);
+
+        return () => {
+            isMountedRef.current = false;
+            clearTimeout(timeoutId);
+        };
     }, []);
 
     return (

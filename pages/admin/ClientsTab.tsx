@@ -217,33 +217,64 @@ const ClientsTab: React.FC<ClientsTabProps> = ({ clients, onEditClient, onDelete
                             {(() => {
                                 const url = getBillUrl(viewingBill);
                                 console.log('Bill URL:', url, 'Original:', viewingBill);
+
+                                // Remove query string for extension checking
+                                const urlWithoutQuery = url.split('?')[0].toLowerCase();
+
+                                // Check for image types
+                                const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg'];
                                 const isImage = url.startsWith('data:image') ||
-                                    /\.(jpg|jpeg|png|gif|webp)/i.test(url) ||
-                                    (url.startsWith('http') && !url.toLowerCase().includes('.pdf'));
-                                const isPdf = url.startsWith('data:application/pdf') || /\.pdf/i.test(url);
+                                    imageExtensions.some(ext => urlWithoutQuery.endsWith(ext)) ||
+                                    url.includes('placeholder.com'); // Common image placeholder service
+
+                                // Check for PDF type
+                                const isPdf = url.startsWith('data:application/pdf') ||
+                                    urlWithoutQuery.endsWith('.pdf');
 
                                 if (isImage) {
                                     return (
-                                        <div className="w-full h-full flex items-center justify-center p-4">
+                                        <div className="w-full h-full flex items-center justify-center p-4 bg-white/5">
                                             <img
                                                 src={url}
-                                                alt="Fatura"
+                                                alt="Fatura de Energia"
                                                 className="max-w-full max-h-full object-contain rounded-xl shadow-2xl"
-                                                onError={(e) => console.error('Image failed to load:', url, e)}
+                                                onError={(e) => {
+                                                    console.error('Image failed to load:', url);
+                                                    (e.target as HTMLImageElement).src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23666"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zm-5-7l-3 3.72L9 13l-3 4h12l-4-5z"/></svg>';
+                                                }}
                                             />
                                         </div>
                                     );
                                 } else if (isPdf) {
-                                    return <iframe src={url} className="w-full h-full bg-white" title="Fatura PDF" />;
-
-                                } else {
                                     return (
-                                        <div className="w-full h-full flex items-center justify-center text-white/20">
-                                            <div className="text-center group-hover:scale-110 transition-transform">
-                                                <span className="material-symbols-outlined text-8xl mb-6 block opacity-20">dock_to_bottom</span>
-                                                <p className="text-sm font-black uppercase tracking-widest">Visualização indisponível</p>
-                                                <p className="text-[10px] opacity-40 mt-2">Clique em "Baixar Arquivo" para visualizar</p>
-                                            </div>
+                                        <iframe
+                                            src={url}
+                                            className="w-full h-full bg-white rounded-xl"
+                                            title="Fatura PDF"
+                                        />
+                                    );
+                                } else {
+                                    // Unknown type - try to display as image first, fallback to download prompt
+                                    return (
+                                        <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-white/5">
+                                            <img
+                                                src={url}
+                                                alt="Documento"
+                                                className="max-w-full max-h-[70%] object-contain rounded-xl shadow-2xl mb-4"
+                                                onError={(e) => {
+                                                    // If image fails, show fallback UI
+                                                    const parent = (e.target as HTMLImageElement).parentElement;
+                                                    if (parent) {
+                                                        parent.innerHTML = `
+                                                            <div class="text-center text-white/20">
+                                                                <span class="material-symbols-outlined text-8xl mb-6 block opacity-20">dock_to_bottom</span>
+                                                                <p class="text-sm font-black uppercase tracking-widest">Visualização indisponível</p>
+                                                                <p class="text-[10px] opacity-40 mt-2">Clique em "Baixar Arquivo" para visualizar</p>
+                                                            </div>
+                                                        `;
+                                                    }
+                                                }}
+                                            />
                                         </div>
                                     );
                                 }
