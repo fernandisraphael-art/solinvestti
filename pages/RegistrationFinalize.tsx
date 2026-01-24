@@ -1,7 +1,6 @@
 
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { scanBillWithAI } from '../lib/ai/billScanner';
 import { maskCurrency } from '../lib/masks';
 
 interface RegistrationFinalizeProps {
