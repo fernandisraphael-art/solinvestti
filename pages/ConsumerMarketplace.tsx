@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { EnergyProvider, UserRole } from '../types';
@@ -6,6 +5,7 @@ import Logo from '../components/Logo';
 import ProviderCard from '../components/marketplace/ProviderCard';
 import BillInput from '../components/marketplace/BillInput';
 import { useAuth } from '../contexts/AuthContext';
+import { useSystem } from '../contexts/SystemContext';
 
 interface ConsumerMarketplaceProps {
   userData: any;
@@ -103,6 +103,7 @@ const ContactSection: React.FC<{ userEmail?: string }> = ({ userEmail }) => {
 const ConsumerMarketplace: React.FC<ConsumerMarketplaceProps> = ({ userData, generators, onSelect }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { error, isLoading, refreshData } = useSystem();
   const [billValue, setBillValue] = useState(userData.billValue || '0');
 
   useEffect(() => {
@@ -117,7 +118,9 @@ const ConsumerMarketplace: React.FC<ConsumerMarketplaceProps> = ({ userData, gen
   console.log('Marketplace Debug:', {
     totalGenerators: generators.length,
     userState: userData.state,
-    sampleGenRegion: generators[0]?.region
+    sampleGenRegion: generators[0]?.region,
+    systemError: error,
+    isLoading
   });
 
   const rankedProviders = [...generators]
@@ -168,7 +171,36 @@ const ConsumerMarketplace: React.FC<ConsumerMarketplaceProps> = ({ userData, gen
 
 
         <div className="space-y-6">
-          {rankedProviders.map((provider, index) => (
+          {error && (
+            <div className="p-6 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-4 animate-in fade-in slide-in-from-bottom-4">
+              <span className="material-symbols-outlined text-3xl text-red-500">cloud_off</span>
+              <div className="flex-1">
+                <h3 className="text-brand-navy font-bold text-lg mb-1">Serviço Indisponível</h3>
+                <p className="text-brand-slate text-sm">
+                  Não foi possível carregar a lista de usinas. Isso pode ocorrer por falha na conexão ou configuração do servidor.
+                  <br />
+                  <span className="text-xs opacity-75">Erro técnico: {error}</span>
+                </p>
+              </div>
+              <button
+                onClick={() => refreshData()}
+                className="px-4 py-2 bg-white border border-red-200 text-red-600 rounded-lg hover:bg-red-50 font-bold text-sm transition-colors"
+              >
+                Tentar Novamente
+              </button>
+            </div>
+          )}
+
+          {isLoading && !error && (
+            <div className="text-center py-20">
+              <div className="flex justify-center mb-4">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+              </div>
+              <p className="text-brand-slate font-medium">Buscando melhores ofertas...</p>
+            </div>
+          )}
+
+          {!isLoading && !error && rankedProviders.map((provider, index) => (
             <ProviderCard
               key={provider.id}
               provider={provider}
@@ -178,7 +210,7 @@ const ConsumerMarketplace: React.FC<ConsumerMarketplaceProps> = ({ userData, gen
             />
           ))}
 
-          {rankedProviders.length === 0 && (
+          {!isLoading && !error && rankedProviders.length === 0 && (
             <div className="text-center py-20 bg-white rounded-[3rem] border border-dashed border-slate-200">
               <span className="material-symbols-outlined text-5xl text-slate-200 mb-4">search_off</span>
               <p className="text-slate-400 font-bold">Nenhuma usina disponível para {userData.state || 'sua região'} no momento.</p>
