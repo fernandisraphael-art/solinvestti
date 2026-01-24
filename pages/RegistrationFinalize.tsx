@@ -108,35 +108,14 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
           </p>
         ) : (
           <div className="max-w-md mb-6 space-y-3">
-
-            {/* LOGIC FIX: Show Investment OR Provider message, not both/mixed */}
-            {isInvestment ? (
-              <div className="bg-brand-navy/10 dark:bg-white/10 rounded-xl p-3 text-left flex items-center gap-3">
-                <span className="material-symbols-outlined text-brand-navy dark:text-primary text-xl">trending_up</span>
+            <div className="bg-primary/10 rounded-xl p-3 text-left">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-primary text-xl">mail</span>
                 <p className="text-xs text-slate-600 dark:text-slate-400">
-                  <span className="font-bold">{finalData.investmentPartner?.name || 'Corretora'}</span> fará análise do seu perfil.
+                  <span className="font-bold text-primary">Confirmação Enviada!</span><br />
+                  Você receberá um e-mail com os próximos passos do seu cadastro.
                 </p>
               </div>
-            ) : (
-              <div className="bg-primary/10 rounded-xl p-3 text-left">
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="material-symbols-outlined text-primary text-xl">bolt</span>
-                  <p className="text-xs text-slate-600 dark:text-slate-400">
-                    <span className="font-bold text-primary">{providerName}</span> entrará em contato em breve.
-                  </p>
-                </div>
-                {/* Debug only if providerName unexpectedly fell back but rawName existed (rare edge case) */}
-                {(!hasValidName && rawName) && (
-                  <p className="text-[8px] text-red-500 opacity-50">Debug Raw: "{rawName}"</p>
-                )}
-              </div>
-            )}
-
-            <div className="flex items-center gap-3 pt-2 border-t border-slate-200 dark:border-white/10 mt-2 px-3">
-              <span className="material-symbols-outlined text-primary text-xl">mail</span>
-              <p className="text-xs text-slate-600 dark:text-slate-400">
-                Você receberá um e-mail de confirmação do cadastro.
-              </p>
             </div>
           </div>
         )}
