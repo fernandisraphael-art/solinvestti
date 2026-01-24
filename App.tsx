@@ -13,6 +13,7 @@ import GeneratorDashboard from './pages/GeneratorDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import AuthPage from './pages/AuthPage';
 import GeneratorSignup from './pages/GeneratorSignup';
+import DebugPage from './pages/DebugPage';
 import ConsumerDashboard from './pages/ConsumerDashboard';
 import AboutPage from './pages/AboutPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -290,6 +291,7 @@ const App: React.FC = () => {
           <Route path="/auth" element={<AuthPage onLogin={handleLogin} />} />
           <Route path="/signup" element={<SignupFlow onComplete={updateUserData} />} />
           <Route path="/generator-signup" element={<GeneratorSignup onComplete={refreshData} />} />
+          <Route path="/debug-production" element={<DebugPage />} />
 
           <Route path="/marketplace" element={
             <ConsumerMarketplace
