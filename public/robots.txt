@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://www.solinvestti.com.br/sitemap.xml
