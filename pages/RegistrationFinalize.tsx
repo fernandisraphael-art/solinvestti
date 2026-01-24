@@ -66,6 +66,12 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
   };
 
   if (success && finalData) {
+    const isInvestment = !!finalData.investmentPartner;
+    // Robust name resolution: Check for name, ensure string, trim, check length. Fallback to generic.
+    const rawName = finalData.selectedProvider?.name;
+    const hasValidName = rawName && typeof rawName === 'string' && rawName.trim().length > 0;
+    const providerName = hasValidName ? rawName : 'Sua Usina Parceira';
+
     if (needsEmailAuth) {
       return (
         <div className="min-h-screen bg-slate-50 dark:bg-[#0b1120] flex flex-col items-center justify-center p-4 text-center font-sans text-slate-900 dark:text-slate-100 animate-in fade-in duration-700">
@@ -98,13 +104,13 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
         </h2>
         {isUpdate ? (
           <p className="text-slate-500 dark:text-slate-400 max-w-lg mb-6 text-sm font-medium leading-relaxed">
-            {finalData.name}, sua estratégia com a {finalData.selectedProvider?.name} foi aplicada.
+            {finalData.name}, sua estratégia com a {providerName} foi aplicada.
           </p>
         ) : (
           <div className="max-w-md mb-6 space-y-3">
 
             {/* LOGIC FIX: Show Investment OR Provider message, not both/mixed */}
-            {finalData.investmentPartner ? (
+            {isInvestment ? (
               <div className="bg-brand-navy/10 dark:bg-white/10 rounded-xl p-3 text-left flex items-center gap-3">
                 <span className="material-symbols-outlined text-brand-navy dark:text-primary text-xl">trending_up</span>
                 <p className="text-xs text-slate-600 dark:text-slate-400">
@@ -116,19 +122,12 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
                 <div className="flex items-center gap-3 mb-2">
                   <span className="material-symbols-outlined text-primary text-xl">bolt</span>
                   <p className="text-xs text-slate-600 dark:text-slate-400">
-                    {/* Explicit check for empty string/whitespace */}
-                    <span className="font-bold text-primary">
-                      {finalData.selectedProvider?.name && finalData.selectedProvider.name.trim().length > 0
-                        ? finalData.selectedProvider.name
-                        : 'Sua Usina Parceira'}
-                    </span> entrará em contato em breve.
+                    <span className="font-bold text-primary">{providerName}</span> entrará em contato em breve.
                   </p>
                 </div>
-                {/* Dev Only: Debug if something is weird */}
-                {(!finalData.selectedProvider?.name) && (
-                  <p className="text-[8px] text-red-500 opacity-50">
-                    Debug: {JSON.stringify(finalData.selectedProvider)}
-                  </p>
+                {/* Debug only if providerName unexpectedly fell back but rawName existed (rare edge case) */}
+                {(!hasValidName && rawName) && (
+                  <p className="text-[8px] text-red-500 opacity-50">Debug Raw: "{rawName}"</p>
                 )}
               </div>
             )}
@@ -139,7 +138,6 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
                 Você receberá um e-mail de confirmação do cadastro.
               </p>
             </div>
-
           </div>
         )}
         <button
