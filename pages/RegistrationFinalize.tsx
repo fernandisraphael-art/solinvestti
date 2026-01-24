@@ -116,9 +116,20 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
                 <div className="flex items-center gap-3 mb-2">
                   <span className="material-symbols-outlined text-primary text-xl">bolt</span>
                   <p className="text-xs text-slate-600 dark:text-slate-400">
-                    <span className="font-bold text-primary">{finalData.selectedProvider?.name || 'A Usina'}</span> entrará em contato em breve.
+                    {/* Explicit check for empty string/whitespace */}
+                    <span className="font-bold text-primary">
+                      {finalData.selectedProvider?.name && finalData.selectedProvider.name.trim().length > 0
+                        ? finalData.selectedProvider.name
+                        : 'Sua Usina Parceira'}
+                    </span> entrará em contato em breve.
                   </p>
                 </div>
+                {/* Dev Only: Debug if something is weird */}
+                {(!finalData.selectedProvider?.name) && (
+                  <p className="text-[8px] text-red-500 opacity-50">
+                    Debug: {JSON.stringify(finalData.selectedProvider)}
+                  </p>
+                )}
               </div>
             )}
 
