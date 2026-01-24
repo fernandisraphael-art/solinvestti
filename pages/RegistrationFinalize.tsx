@@ -21,14 +21,8 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
 
   const isUpdate = userData.isAlreadyRegistered;
 
-  // Snapshot user data IMMMEDIATELY on mount to avoid any loss during the process
+  // Snapshot user data for success screen to avoid flicker/empty state when parent resets userData
   const [finalData, setFinalData] = useState<any>(null);
-
-  useEffect(() => {
-    if (userData && !finalData) {
-      setFinalData({ ...userData });
-    }
-  }, [userData]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -53,6 +47,8 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
       }
     }
 
+    // Capture the data exactly when the user confirms (before any clear)
+    setFinalData({ ...userData });
     setIsFinalizing(true);
 
     try {
