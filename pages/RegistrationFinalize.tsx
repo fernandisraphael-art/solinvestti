@@ -1,14 +1,17 @@
 
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { scanBillWithAI } from '../lib/ai/billScanner';
+import { maskCurrency } from '../lib/masks';
 
 interface RegistrationFinalizeProps {
   userData: any;
   onConfirm: (password?: string) => Promise<{ success: boolean; needsConfirmation: boolean } | void>;
   onFileSelect: (fileBase64: string) => void;
+  onUpdateData: (data: any) => void;
 }
 
-const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, onConfirm, onFileSelect }) => {
+const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, onConfirm, onFileSelect, onUpdateData }) => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isFinalizing, setIsFinalizing] = useState(false);
@@ -20,13 +23,16 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
 
   const isUpdate = userData.isAlreadyRegistered;
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setFileName(file.name);
+
+      // Read file for preview/upload
       const reader = new FileReader();
       reader.onloadend = () => {
-        onFileSelect(reader.result as string);
+        const base64 = reader.result as string;
+        onFileSelect(base64);
       };
       reader.readAsDataURL(file);
     }
@@ -92,18 +98,28 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
           </p>
         ) : (
           <div className="max-w-md mb-6 space-y-3">
-            <div className="bg-primary/10 rounded-xl p-3 text-left flex items-center gap-3">
-              <span className="material-symbols-outlined text-primary text-xl">bolt</span>
-              <p className="text-xs text-slate-600 dark:text-slate-400">
-                <span className="font-bold text-primary">{userData.selectedProvider?.name}</span> entrará em contato em breve.
-              </p>
+            <div className="bg-primary/10 rounded-xl p-3 text-left">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="material-symbols-outlined text-primary text-xl">bolt</span>
+                <p className="text-xs text-slate-600 dark:text-slate-400">
+                  <span className="font-bold text-primary">{userData.selectedProvider?.name}</span> entrará em contato em breve.
+                </p>
+              </div>
+              <div className="flex items-center gap-3 pt-2 border-t border-primary/20">
+                <span className="material-symbols-outlined text-primary text-xl">mail</span>
+                <p className="text-xs text-slate-600 dark:text-slate-400">
+                  Você receberá um e-mail de confirmação do cadastro.
+                </p>
+              </div>
             </div>
-            <div className="bg-brand-navy/10 dark:bg-white/10 rounded-xl p-3 text-left flex items-center gap-3">
-              <span className="material-symbols-outlined text-brand-navy dark:text-primary text-xl">trending_up</span>
-              <p className="text-xs text-slate-600 dark:text-slate-400">
-                <span className="font-bold">{userData.investmentPartner?.name || 'Corretora'}</span> fará análise do seu perfil.
-              </p>
-            </div>
+            {userData.investmentPartner && (
+              <div className="bg-brand-navy/10 dark:bg-white/10 rounded-xl p-3 text-left flex items-center gap-3">
+                <span className="material-symbols-outlined text-brand-navy dark:text-primary text-xl">trending_up</span>
+                <p className="text-xs text-slate-600 dark:text-slate-400">
+                  <span className="font-bold">{userData.investmentPartner?.name || 'Corretora'}</span> fará análise do seu perfil.
+                </p>
+              </div>
+            )}
           </div>
         )}
         <button
@@ -168,6 +184,12 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
               <p className="text-[9px] text-slate-400 uppercase">
                 {userData.energyBillFile ? 'Anexado' : 'Obrigatório'}
               </p>
+              {isScanning && (
+                <div className="absolute inset-0 bg-white/80 dark:bg-brand-navy/80 flex flex-col items-center justify-center animate-in fade-in z-20 backdrop-blur-sm rounded-2xl">
+                  <div className="size-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-2"></div>
+                  <p className="text-[10px] font-black text-primary uppercase tracking-widest animate-pulse">Lendo Fatura IA...</p>
+                </div>
+              )}
             </div>
           )}
 

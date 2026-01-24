@@ -19,6 +19,7 @@ import SettingsTab from './admin/SettingsTab';
 import ProspectorTab from './admin/ProspectorTab';
 import GeneratorModal from './admin/GeneratorModal';
 import ClientModal from './admin/ClientModal';
+import ConcessionaireModal from './admin/ConcessionaireModal';
 
 interface AdminDashboardProps {
   generators: EnergyProvider[];
@@ -39,6 +40,8 @@ interface AdminDashboardProps {
   onReset: () => void;
 }
 
+import { useSystem } from '../contexts/SystemContext';
+
 const AdminDashboard: React.FC<AdminDashboardProps> = ({
   generators,
   onToggleStatus,
@@ -57,6 +60,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onUpdateConcessionaire,
   onReset
 }) => {
+  const { error, refreshData } = useSystem();
   const navigate = useNavigate();
   const manualUploadRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState('overview');
@@ -68,6 +72,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [candidateSuppliers, setCandidateSuppliers] = useState<any[]>([]);
   const [editingGenerator, setEditingGenerator] = useState<EnergyProvider | null>(null);
   const [editingClient, setEditingClient] = useState<any | null>(null);
+  const [editingConcessionaire, setEditingConcessionaire] = useState<Partial<Concessionaire> | null>(null);
 
   const [hasApiKey, setHasApiKey] = useState(false);
   const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
@@ -294,7 +299,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         onLogout={() => navigate('/')}
       />
 
-      <main className="flex-1 p-8 lg:p-12 overflow-y-auto h-screen custom-scrollbar relative">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
         <Header
           userName="Admin"
           title={
@@ -307,7 +312,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           }
         />
 
-        <div className="mt-10">
+
+        {error && (
+          <div className="bg-red-500/10 border-b border-red-500/20 px-6 py-3 flex items-center justify-between animate-in slide-in-from-top">
+            <div className="flex items-center gap-3 text-red-400">
+              <span className="material-symbols-outlined">wifi_off</span>
+              <p className="text-sm font-bold">Erro de Conexão: {error}</p>
+            </div>
+            <button
+              onClick={() => refreshData()}
+              className="text-xs font-black uppercase tracking-widest text-red-400 hover:text-white hover:underline flex items-center gap-2"
+            >
+              <span className="material-symbols-outlined text-sm">refresh</span> Tentar Novamente
+            </button>
+          </div>
+        )}
+
+        <div className="mt-10 px-6 overflow-y-auto pb-20 scroll-smooth h-full custom-scrollbar">
           {activeTab === 'overview' && <OverviewTab generators={generators} clients={clients} concessionaires={concessionaires} />}
 
           {activeTab === 'suppliers' && (
@@ -345,8 +366,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           {activeTab === 'concessionaires' && (
             <ConcessionairesTab
               concessionaires={concessionaires}
-              onEdit={() => { }}
-              onAdd={() => { }}
+              onEdit={(c) => setEditingConcessionaire(c)}
+              onAdd={() => setEditingConcessionaire({})}
             />
           )}
 
@@ -370,59 +391,82 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             />
           )}
         </div>
-      </main>
+      </div>
 
       {/* Modals outside main for safety */}
-      {editingGenerator && (
-        <GeneratorModal
-          generator={editingGenerator}
-          onClose={() => setEditingGenerator(null)}
-          onSmartFill={handleSmartFill}
-          onSave={(data) => {
-            if (data.id) onUpdateGenerator(data.id, data);
-            else onAddGenerator(data);
-            setEditingGenerator(null);
-            triggerToast('Salvo com sucesso!');
-          }}
-          onUpdateField={(f, v) => setEditingGenerator(prev => prev ? ({ ...prev, [f]: v }) : null)}
-        />
-      )}
+      {
+        editingGenerator && (
+          <GeneratorModal
+            generator={editingGenerator}
+            onClose={() => setEditingGenerator(null)}
+            onSmartFill={handleSmartFill}
+            onSave={(data) => {
+              if (data.id) onUpdateGenerator(data.id, data);
+              else onAddGenerator(data);
+              setEditingGenerator(null);
+              triggerToast('Salvo com sucesso!');
+            }}
+            onUpdateField={(f, v) => setEditingGenerator(prev => prev ? ({ ...prev, [f]: v }) : null)}
+          />
+        )
+      }
 
-      {editingClient && (
-        <ClientModal
-          client={editingClient}
-          onClose={() => setEditingClient(null)}
-          onSave={(id, updates) => {
-            console.log('AdminDashboard: onSave for client:', id);
-            onUpdateClient(id, updates);
-            setEditingClient(null);
-            triggerToast('Dados do cliente atualizados!');
-          }}
-        />
-      )}
+      {
+        editingClient && (
+          <ClientModal
+            client={editingClient}
+            onClose={() => setEditingClient(null)}
+            onSave={(id, updates) => {
+              console.log('AdminDashboard: onSave for client:', id);
+              onUpdateClient(id, updates);
+              setEditingClient(null);
+              triggerToast('Dados do cliente atualizados!');
+            }}
+          />
+        )
+      }
 
-      {isResetModalOpen && (
-        <div className="fixed inset-0 bg-brand-deep/80 backdrop-blur-xl z-[70] flex items-center justify-center p-6">
-          <div className="bg-[#0F172A] border border-red-500/20 w-full max-w-lg rounded-[3rem] p-12 text-center shadow-2xl">
-            <h3 className="text-2xl font-black text-white mb-4">Hard Reset</h3>
-            <p className="text-white/40 mb-8">Esta ação apagará todos os dados. Tem certeza?</p>
-            <div className="flex gap-4">
-              <button onClick={() => setIsResetModalOpen(false)} className="flex-1 py-4 bg-white/5 rounded-2xl font-bold uppercase text-[10px]">Cancelar</button>
-              <button onClick={() => { onReset(); setIsResetModalOpen(false); }} className="flex-1 py-4 bg-red-500 text-white rounded-2xl font-bold uppercase text-[10px]">Confirmar Reset</button>
+      {
+        editingConcessionaire && (
+          <ConcessionaireModal
+            concessionaire={editingConcessionaire}
+            onClose={() => setEditingConcessionaire(null)}
+            onSave={(data) => {
+              if (data.id) onUpdateConcessionaire(data.id, data);
+              else onAddConcessionaire(data as Concessionaire);
+              setEditingConcessionaire(null);
+              triggerToast('Distribuidora salva com sucesso!');
+            }}
+          />
+        )
+      }
+
+      {
+        isResetModalOpen && (
+          <div className="fixed inset-0 bg-brand-deep/80 backdrop-blur-xl z-[70] flex items-center justify-center p-6">
+            <div className="bg-[#0F172A] border border-red-500/20 w-full max-w-lg rounded-[3rem] p-12 text-center shadow-2xl">
+              <h3 className="text-2xl font-black text-white mb-4">Hard Reset</h3>
+              <p className="text-white/40 mb-8">Esta ação apagará todos os dados. Tem certeza?</p>
+              <div className="flex gap-4">
+                <button onClick={() => setIsResetModalOpen(false)} className="flex-1 py-4 bg-white/5 rounded-2xl font-bold uppercase text-[10px]">Cancelar</button>
+                <button onClick={() => { onReset(); setIsResetModalOpen(false); }} className="flex-1 py-4 bg-red-500 text-white rounded-2xl font-bold uppercase text-[10px]">Confirmar Reset</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
-      {showToast.show && (
-        <div className={`fixed bottom-10 right-10 px-8 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest animate-in slide-in-from-right-10 duration-300 z-[100] ${showToast.type === 'error' ? 'bg-red-500 text-white' : 'bg-primary text-brand-navy shadow-lg shadow-primary/20'}`}>
-          {showToast.msg}
-        </div>
-      )}
+      {
+        showToast.show && (
+          <div className={`fixed bottom-10 right-10 px-8 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest animate-in slide-in-from-right-10 duration-300 z-[100] ${showToast.type === 'error' ? 'bg-red-500 text-white' : 'bg-primary text-brand-navy shadow-lg shadow-primary/20'}`}>
+            {showToast.msg}
+          </div>
+        )
+      }
 
       {/* Hidden inputs moved inside main container or just before closing div */}
       <input type="file" ref={manualUploadRef} className="hidden" onChange={handleManualUpload} accept=".xlsx,.csv" />
-    </div>
+    </div >
   );
 };
 

@@ -5,19 +5,19 @@ import Logo from '../components/Logo';
 
 const PARTNERS = [
   {
-    id: 'xp',
+    id: 'd290f1ee-6c54-4b01-90e6-d701748f0851', // XP Investimentos
     name: 'XP Investimentos',
     tagline: 'Maior corretora do Brasil',
     color: 'from-amber-400 to-amber-600',
   },
   {
-    id: 'btg',
+    id: 'd290f1ee-6c54-4b01-90e6-d701748f0852', // BTG Pactual
     name: 'BTG Pactual',
     tagline: 'Maior banco de investimentos',
     color: 'from-blue-800 to-blue-950',
   },
   {
-    id: 'genial',
+    id: 'd290f1ee-6c54-4b01-90e6-d701748f0853', // Genial Investimentos
     name: 'Genial Investimentos',
     tagline: 'Taxas competitivas',
     color: 'from-cyan-400 to-blue-500',

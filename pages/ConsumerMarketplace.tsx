@@ -114,6 +114,12 @@ const ConsumerMarketplace: React.FC<ConsumerMarketplaceProps> = ({ userData, gen
     navigate('/savings');
   };
 
+  console.log('Marketplace Debug:', {
+    totalGenerators: generators.length,
+    userState: userData.state,
+    sampleGenRegion: generators[0]?.region
+  });
+
   const rankedProviders = [...generators]
     .filter(p => p.status === 'active')
     .filter(p => {

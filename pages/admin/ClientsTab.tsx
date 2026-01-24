@@ -63,6 +63,8 @@ const ClientsTab: React.FC<ClientsTabProps> = ({ clients, onEditClient, onDelete
         return data.publicUrl;
     };
 
+
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500 bg-[#020617] p-3 rounded-2xl border border-white/5 max-h-screen overflow-y-auto no-scrollbar">
 

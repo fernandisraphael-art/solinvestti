@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Logo from '../components/Logo';
-import { maskPhone, maskCurrency, parseCurrencyToNumber, normalizeText } from '../lib/masks';
+import { maskPhone, maskCurrency, parseCurrencyToNumber, normalizeText, maskCEP } from '../lib/masks';
 
 const SignupFlow: React.FC<{ onComplete: (data: any) => void }> = ({ onComplete }) => {
   const navigate = useNavigate();
@@ -12,8 +12,33 @@ const SignupFlow: React.FC<{ onComplete: (data: any) => void }> = ({ onComplete 
     phone: '',
     state: '',
     city: '',
+    cep: '',
     billValue: '',
   });
+  const [isLoadingCep, setIsLoadingCep] = useState(false);
+
+  const handleCepBlur = async (cep: string) => {
+    const cleanCep = cep.replace(/\D/g, '');
+    if (cleanCep.length !== 8) return;
+
+    setIsLoadingCep(true);
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+      const data = await response.json();
+
+      if (!data.erro) {
+        setFormData(prev => ({
+          ...prev,
+          city: data.localidade,
+          state: data.uf
+        }));
+      }
+    } catch (error) {
+      console.error('Erro ao buscar CEP:', error);
+    } finally {
+      setIsLoadingCep(false);
+    }
+  };
 
   const handleNext = () => {
     // Convert raw digits to float string (ex: '30000' -> '300.00')
@@ -115,28 +140,83 @@ const SignupFlow: React.FC<{ onComplete: (data: any) => void }> = ({ onComplete 
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">CEP</label>
+                  <div className="relative">
+                    <input
+                      className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-4 outline-none text-slate-900 dark:text-white font-bold"
+                      placeholder="00000-000"
+                      value={formData.cep}
+                      onChange={e => setFormData({ ...formData, cep: maskCEP(e.target.value) })}
+                      onBlur={() => handleCepBlur(formData.cep)}
+                      maxLength={9}
+                    />
+                    {isLoadingCep && (
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                        <div className="size-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Cidade</label>
+                  <input
+                    className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-4 outline-none text-slate-900 dark:text-white font-bold disabled:opacity-50"
+                    placeholder="Sua Cidade"
+                    value={formData.city}
+                    onChange={e => setFormData({ ...formData, city: e.target.value })}
+                  />
+                </div>
+                <div>
                   <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Estado (UF)</label>
                   <select
-                    className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-4 outline-none text-slate-900 dark:text-white font-bold appearance-none"
+                    className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-4 outline-none text-slate-900 dark:text-white font-bold appearance-none disabled:opacity-50"
                     value={formData.state}
                     onChange={e => setFormData({ ...formData, state: e.target.value })}
                   >
                     <option value="">Selecione</option>
-                    <option value="SP">São Paulo</option>
+                    <option value="AC">Acre</option>
+                    <option value="AL">Alagoas</option>
+                    <option value="AP">Amapá</option>
+                    <option value="AM">Amazonas</option>
+                    <option value="BA">Bahia</option>
+                    <option value="CE">Ceará</option>
+                    <option value="DF">Distrito Federal</option>
+                    <option value="ES">Espírito Santo</option>
+                    <option value="GO">Goiás</option>
+                    <option value="MA">Maranhão</option>
+                    <option value="MT">Mato Grosso</option>
+                    <option value="MS">Mato Grosso do Sul</option>
                     <option value="MG">Minas Gerais</option>
+                    <option value="PA">Pará</option>
+                    <option value="PB">Paraíba</option>
+                    <option value="PR">Paraná</option>
+                    <option value="PE">Pernambuco</option>
+                    <option value="PI">Piauí</option>
                     <option value="RJ">Rio de Janeiro</option>
+                    <option value="RN">Rio Grande do Norte</option>
+                    <option value="RS">Rio Grande do Sul</option>
+                    <option value="RO">Rondônia</option>
+                    <option value="RR">Roraima</option>
+                    <option value="SC">Santa Catarina</option>
+                    <option value="SP">São Paulo</option>
+                    <option value="SE">Sergipe</option>
+                    <option value="TO">Tocantins</option>
                   </select>
                 </div>
-                <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Valor da Conta (R$)</label>
-                  <input
-                    type="text"
-                    className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-slate-900 dark:text-white font-black"
-                    placeholder="0,00"
-                    value={maskCurrency(String(formData.billValue))}
-                    onChange={e => setFormData({ ...formData, billValue: e.target.value.replace(/\D/g, '') })}
-                  />
-                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Valor da Conta (R$)</label>
+                <input
+                  type="text"
+                  className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-slate-900 dark:text-white font-black"
+                  placeholder="0,00"
+                  value={maskCurrency(String(formData.billValue))}
+                  onChange={e => setFormData({ ...formData, billValue: e.target.value.replace(/\D/g, '') })}
+                />
               </div>
 
 
@@ -151,7 +231,7 @@ const SignupFlow: React.FC<{ onComplete: (data: any) => void }> = ({ onComplete 
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 

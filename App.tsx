@@ -228,14 +228,14 @@ const App: React.FC = () => {
           <Route path="/marketplace" element={
             <ConsumerMarketplace
               userData={userData}
-              generators={generators.filter(g => !g.isFull && g.status === 'active')}
+              generators={generators}
               onSelect={updateUserData}
             />
           } />
           <Route path="/savings" element={<ConsumerSavings userData={userData} />} />
           <Route path="/investments" element={<InvestmentPartners userData={userData} onSelect={updateUserData} />} />
           <Route path="/investment-simulation" element={<InvestmentSimulation userData={userData} onComplete={updateUserData} />} />
-          <Route path="/finalize" element={<RegistrationFinalize userData={userData} onConfirm={handleClientRegistration} onFileSelect={file => updateUserData({ energyBillFile: file })} />} />
+          <Route path="/finalize" element={<RegistrationFinalize userData={userData} onConfirm={handleClientRegistration} onFileSelect={file => updateUserData({ energyBillFile: file })} onUpdateData={updateUserData} />} />
 
           <Route path="/consumer-dashboard" element={<ProtectedRoute allowedRole={UserRole.CONSUMER}><ConsumerDashboard userData={userData} onUpdateProfile={() => { }} /></ProtectedRoute>} />
 

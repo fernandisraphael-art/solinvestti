@@ -8,6 +8,7 @@ interface SystemContextType {
     concessionaires: Concessionaire[];
     clients: any[];
     isLoading: boolean;
+    error: string | null;
     refreshData: () => Promise<void>;
     maintenanceMode: boolean;
     toggleMaintenanceMode: () => void;
@@ -20,6 +21,7 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const [concessionaires, setConcessionaires] = useState<Concessionaire[]>([]);
     const [clients, setClients] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [maintenanceMode, setMaintenanceMode] = useState(false);
     const isMountedRef = useRef(true);
     const retryCountRef = useRef(0);
@@ -38,6 +40,7 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const refreshData = async () => {
         if (!isMountedRef.current) return;
         setIsLoading(true);
+        setError(null);
 
         try {
             // Fetch each data type independently to prevent one failure from breaking all
@@ -106,6 +109,7 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             // Only log non-abort errors
             if (err?.name !== 'AbortError' && !err?.message?.includes('AbortError')) {
                 console.error('System Refresh Error:', err);
+                setError(err.message || 'Erro deconhecido ao carregar dados.');
             }
         } finally {
             if (isMountedRef.current) {
@@ -132,7 +136,7 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }, []);
 
     return (
-        <SystemContext.Provider value={{ generators, concessionaires, clients, isLoading, refreshData, maintenanceMode, toggleMaintenanceMode }}>
+        <SystemContext.Provider value={{ generators, concessionaires, clients, isLoading, error, refreshData, maintenanceMode, toggleMaintenanceMode }}>
             {children}
         </SystemContext.Provider>
     );
