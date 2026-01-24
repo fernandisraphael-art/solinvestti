@@ -21,6 +21,9 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
 
   const isUpdate = userData.isAlreadyRegistered;
 
+  // Snapshot user data for success screen to avoid flicker/empty state when parent resets userData
+  const [finalData, setFinalData] = useState<any>(null);
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -32,7 +35,6 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
         const base64 = reader.result as string;
         onFileSelect(base64); // Pass to parent
       };
-
       reader.readAsDataURL(file);
     }
   };
@@ -45,7 +47,10 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
       }
     }
 
+    // Save snapshot of data before it might be cleared by parent
+    setFinalData({ ...userData });
     setIsFinalizing(true);
+
     try {
       const result = await onConfirm(password);
       if (result && 'needsConfirmation' in result && result.needsConfirmation) {
@@ -60,7 +65,7 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
     }
   };
 
-  if (success) {
+  if (success && finalData) {
     if (needsEmailAuth) {
       return (
         <div className="min-h-screen bg-slate-50 dark:bg-[#0b1120] flex flex-col items-center justify-center p-4 text-center font-sans text-slate-900 dark:text-slate-100 animate-in fade-in duration-700">
@@ -71,7 +76,7 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
             Confirme sua Senha
           </h2>
           <p className="text-slate-500 dark:text-slate-400 max-w-md mb-6 text-sm font-medium leading-relaxed">
-            Enviamos um link de confirmação para <span className="text-brand-navy dark:text-white font-bold">{userData.email}</span>.
+            Enviamos um link de confirmação para <span className="text-brand-navy dark:text-white font-bold">{finalData.email}</span>.
           </p>
           <button
             onClick={() => navigate('/auth')}
@@ -93,32 +98,37 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
         </h2>
         {isUpdate ? (
           <p className="text-slate-500 dark:text-slate-400 max-w-lg mb-6 text-sm font-medium leading-relaxed">
-            {userData.name}, sua estratégia com a {userData.selectedProvider?.name} foi aplicada.
+            {finalData.name}, sua estratégia com a {finalData.selectedProvider?.name} foi aplicada.
           </p>
         ) : (
           <div className="max-w-md mb-6 space-y-3">
-            <div className="bg-primary/10 rounded-xl p-3 text-left">
-              <div className="flex items-center gap-3 mb-2">
-                <span className="material-symbols-outlined text-primary text-xl">bolt</span>
-                <p className="text-xs text-slate-600 dark:text-slate-400">
-                  <span className="font-bold text-primary">{userData.selectedProvider?.name}</span> entrará em contato em breve.
-                </p>
-              </div>
-              <div className="flex items-center gap-3 pt-2 border-t border-primary/20">
-                <span className="material-symbols-outlined text-primary text-xl">mail</span>
-                <p className="text-xs text-slate-600 dark:text-slate-400">
-                  Você receberá um e-mail de confirmação do cadastro.
-                </p>
-              </div>
-            </div>
-            {userData.investmentPartner && (
+
+            {/* LOGIC FIX: Show Investment OR Provider message, not both/mixed */}
+            {finalData.investmentPartner ? (
               <div className="bg-brand-navy/10 dark:bg-white/10 rounded-xl p-3 text-left flex items-center gap-3">
                 <span className="material-symbols-outlined text-brand-navy dark:text-primary text-xl">trending_up</span>
                 <p className="text-xs text-slate-600 dark:text-slate-400">
-                  <span className="font-bold">{userData.investmentPartner?.name || 'Corretora'}</span> fará análise do seu perfil.
+                  <span className="font-bold">{finalData.investmentPartner?.name || 'Corretora'}</span> fará análise do seu perfil.
                 </p>
               </div>
+            ) : (
+              <div className="bg-primary/10 rounded-xl p-3 text-left">
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="material-symbols-outlined text-primary text-xl">bolt</span>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                    <span className="font-bold text-primary">{finalData.selectedProvider?.name}</span> entrará em contato em breve.
+                  </p>
+                </div>
+              </div>
             )}
+
+            <div className="flex items-center gap-3 pt-2 border-t border-slate-200 dark:border-white/10 mt-2 px-3">
+              <span className="material-symbols-outlined text-primary text-xl">mail</span>
+              <p className="text-xs text-slate-600 dark:text-slate-400">
+                Você receberá um e-mail de confirmação do cadastro.
+              </p>
+            </div>
+
           </div>
         )}
         <button
