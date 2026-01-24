@@ -2,16 +2,14 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { maskCurrency } from '../lib/masks';
-import { scanBillWithAI } from '../lib/ai/billScanner';
 
 interface RegistrationFinalizeProps {
   userData: any;
   onConfirm: (password?: string) => Promise<{ success: boolean; needsConfirmation: boolean } | void>;
   onFileSelect: (fileBase64: string) => void;
-  onUpdateData: (data: any) => void;
 }
 
-const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, onConfirm, onFileSelect, onUpdateData }) => {
+const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, onConfirm, onFileSelect }) => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isFinalizing, setIsFinalizing] = useState(false);
@@ -20,7 +18,6 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
   const [fileName, setFileName] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [isScanning, setIsScanning] = useState(false);
 
   const isUpdate = userData.isAlreadyRegistered;
 
@@ -29,32 +26,11 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
     if (file) {
       setFileName(file.name);
 
-      // Start scanning UI immediately
-      setIsScanning(true);
-
       // Read file for preview/upload
       const reader = new FileReader();
-      reader.onloadend = async () => {
-        try {
-          const base64 = reader.result as string;
-          onFileSelect(base64); // Pass to parent
-
-          // Trigger AI Scan
-          console.log("Starting AI Scan...");
-          const result = await scanBillWithAI(base64, file.type);
-          console.log("AI Result:", result);
-
-          if (result.value) {
-            // Update bill value if found with confidence
-            // formatted as string for the input
-            const valueStr = String(result.value * 100); // 123.45 -> 12345 (cents basically, but the mask expects string digits)
-            onUpdateData({ billValue: valueStr });
-          }
-        } catch (error) {
-          console.error("Scanning error:", error);
-        } finally {
-          setIsScanning(false);
-        }
+      reader.onloadend = () => {
+        const base64 = reader.result as string;
+        onFileSelect(base64); // Pass to parent
       };
 
       reader.readAsDataURL(file);
@@ -207,12 +183,6 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
               <p className="text-[9px] text-slate-400 uppercase">
                 {userData.energyBillFile ? 'Anexado' : 'Obrigatório'}
               </p>
-              {isScanning && (
-                <div className="absolute inset-0 bg-white/80 dark:bg-brand-navy/80 flex flex-col items-center justify-center animate-in fade-in z-20 backdrop-blur-sm rounded-2xl">
-                  <div className="size-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-2"></div>
-                  <p className="text-[10px] font-black text-primary uppercase tracking-widest animate-pulse">Lendo Fatura IA...</p>
-                </div>
-              )}
             </div>
           )}
 
