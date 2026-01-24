@@ -2,6 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { maskCurrency } from '../lib/masks';
+import { scanBillWithAI } from '../lib/ai/billScanner';
 
 interface RegistrationFinalizeProps {
   userData: any;
@@ -28,12 +29,34 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
     if (file) {
       setFileName(file.name);
 
+      // Start scanning UI immediately
+      setIsScanning(true);
+
       // Read file for preview/upload
       const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = reader.result as string;
-        onFileSelect(base64);
+      reader.onloadend = async () => {
+        try {
+          const base64 = reader.result as string;
+          onFileSelect(base64); // Pass to parent
+
+          // Trigger AI Scan
+          console.log("Starting AI Scan...");
+          const result = await scanBillWithAI(base64, file.type);
+          console.log("AI Result:", result);
+
+          if (result.value) {
+            // Update bill value if found with confidence
+            // formatted as string for the input
+            const valueStr = String(result.value * 100); // 123.45 -> 12345 (cents basically, but the mask expects string digits)
+            onUpdateData({ billValue: valueStr });
+          }
+        } catch (error) {
+          console.error("Scanning error:", error);
+        } finally {
+          setIsScanning(false);
+        }
       };
+
       reader.readAsDataURL(file);
     }
   };
