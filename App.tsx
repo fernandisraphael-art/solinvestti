@@ -172,7 +172,7 @@ const App: React.FC = () => {
       }
       const cleanBill = parseFloat(billString) || 0;
 
-      const { error: dbError } = await supabase.from('clients').insert({
+      const clientData = {
         name: userData.name,
         email: userData.email,
         phone: userData.phone,
@@ -185,15 +185,81 @@ const App: React.FC = () => {
         investment_partner_id: userData.investmentPartner?.id, // This is now a UUID
         bill_url: billUrl,
         user_id: userId // May be null if auth failed, that's OK
-      });
+      };
 
-      if (dbError) {
-        console.error("Database Error details:", dbError);
-        throw new Error(`Erro no banco de dados: ${dbError.message}`);
+      // Try SDK first, fallback to direct fetch if AbortError
+      let insertSuccess = false;
+      try {
+        const { error: dbError } = await supabase.from('clients').insert(clientData);
+
+        if (dbError) {
+          // Check if it's an AbortError
+          if (dbError.message?.includes('AbortError') || dbError.message?.includes('aborted')) {
+            console.warn('SDK AbortError, trying direct fetch fallback...');
+            throw new Error('AbortError'); // Trigger fallback
+          }
+          console.error("Database Error details:", dbError);
+          throw new Error(`Erro no banco de dados: ${dbError.message}`);
+        }
+        insertSuccess = true;
+      } catch (sdkErr: any) {
+        // Fallback: Direct API call
+        if (sdkErr.message?.includes('AbortError') || sdkErr.message?.includes('aborted')) {
+          console.log('Using direct API fallback for client insert...');
+          const url = import.meta.env.VITE_SUPABASE_URL;
+          const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+          if (!url || !key) {
+            throw new Error('Configuração do Supabase não encontrada. Por favor, recarregue a página.');
+          }
+
+          const response = await fetch(`${url}/rest/v1/clients`, {
+            method: 'POST',
+            headers: {
+              'apikey': key,
+              'Authorization': `Bearer ${key}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify(clientData)
+          });
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Erro ao salvar cadastro: ${response.status} - ${errorText}`);
+          }
+          insertSuccess = true;
+          console.log('✅ Client inserted via direct API fallback');
+        } else {
+          throw sdkErr; // Re-throw if not AbortError
+        }
+      }
+
+      if (!insertSuccess) {
+        throw new Error('Falha ao salvar cadastro. Por favor, tente novamente.');
       }
 
       // Refresh global state so admin sees the new client immediately
-      refreshData();
+      await refreshData();
+
+      // Clear userData after a small delay to ensure refresh completes
+      // This prevents race conditions and ensures the new client appears in the list
+      setTimeout(() => {
+        setUserData({
+          name: '',
+          email: '',
+          phone: '',
+          state: '',
+          city: '',
+          billValue: '0',
+          selectedProvider: null,
+          investmentPartner: null,
+          investmentSimulation: null,
+          isAlreadyRegistered: false,
+          energyBillFile: null,
+          profileImage: null
+        });
+      }, 500);
 
       return { success: true, needsConfirmation: false };
 
@@ -223,7 +289,7 @@ const App: React.FC = () => {
           <Route path="/admin-login" element={<AuthPage onLogin={handleLogin} fixedRole={UserRole.ADMIN} />} />
           <Route path="/auth" element={<AuthPage onLogin={handleLogin} />} />
           <Route path="/signup" element={<SignupFlow onComplete={updateUserData} />} />
-          <Route path="/generator-signup" element={<GeneratorSignup onComplete={() => { }} />} />
+          <Route path="/generator-signup" element={<GeneratorSignup onComplete={refreshData} />} />
 
           <Route path="/marketplace" element={
             <ConsumerMarketplace

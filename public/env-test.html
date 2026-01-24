@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Supabase Env Test</title>
+</head>
+<body>
+    <h1>Supabase Environment Variables Test</h1>
+    <div id="result"></div>
+    
+    <script type="module">
+        const url = import.meta.env.VITE_SUPABASE_URL;
+        const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+        
+        const result = document.getElementById('result');
+        result.innerHTML = `
+            <p><strong>VITE_SUPABASE_URL:</strong> ${url ? '✅ LOADED' : '❌ MISSING'}</p>
+            <p><strong>VITE_SUPABASE_ANON_KEY:</strong> ${key ? '✅ LOADED' : '❌ MISSING'}</p>
+            <hr>
+            <p>URL: ${url || 'NOT SET'}</p>
+            <p>Key: ${key ? key.substring(0, 20) + '...' : 'NOT SET'}</p>
+        `;
+        
+        console.log('Environment check:', {
+            url: url ? 'SET' : 'MISSING',
+            key: key ? 'SET' : 'MISSING'
+        });
+    </script>
+</body>
+</html>

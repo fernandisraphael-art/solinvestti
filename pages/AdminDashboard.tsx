@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { EnergyProvider, Concessionaire } from '../types';
@@ -7,8 +6,8 @@ import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 import { parseBatchData } from '../lib/importHelper';
 import * as XLSX from 'xlsx';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 // Modular Components
 import OverviewTab from './admin/OverviewTab';
@@ -213,33 +212,94 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   const handleExportPDF = () => {
-    const doc = new jsPDF();
-    doc.text("Relatório de Usinas Parceiras - Solinvestti", 14, 20);
+    try {
+      const doc = new jsPDF('landscape'); // Landscape for more columns
 
-    (doc as any).autoTable({
-      startY: 30,
-      head: [['Nome', 'Tipo', 'Local', 'Capacidade (MW)', 'Status', 'Resp.']],
-      body: generators.map(g => [
-        g.name,
-        g.type,
-        `${g.city || '-'} / ${g.region}`,
-        g.capacity || '-',
-        g.status === 'active' ? 'Ativo' : g.status === 'cancelled' ? 'Cancelado' : 'Pendente',
-        g.responsibleName || '-'
-      ]),
-    });
+      // Title
+      doc.setFontSize(16);
+      doc.text("Relatório Completo de Usinas Parceiras - Solinvestti", 14, 15);
 
-    const pdfBlob = doc.output('blob');
-    const url = window.URL.createObjectURL(pdfBlob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = "Solinvestti_Relatorio_Parceiros.pdf";
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
+      // Subtitle with date
+      doc.setFontSize(10);
+      doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, 14, 22);
 
-    triggerToast('PDF exportado com sucesso!');
+      autoTable(doc, {
+        startY: 28,
+        head: [[
+          'Nome',
+          'Tipo',
+          'Local',
+          'Capacidade\n(MW)',
+          'Status',
+          'Desconto\n(%)',
+          'Comissão\n(%)',
+          'Rating',
+          'Empresa',
+          'Responsável',
+          'Telefone',
+          'Email',
+          'Receita Anual\n(R$)'
+        ]],
+        body: generators.map(g => [
+          g.name || '-',
+          g.type || '-',
+          `${g.city || '-'} / ${g.region || '-'}`,
+          g.capacity || '-',
+          g.status === 'active' ? 'Ativo' : g.status === 'cancelled' ? 'Cancelado' : 'Pendente',
+          g.discount ? `${g.discount}%` : '-',
+          g.commission ? `${g.commission}%` : '-',
+          g.rating ? `${g.rating}/5` : '-',
+          g.company || '-',
+          g.responsibleName || '-',
+          g.responsiblePhone || '-',
+          g.accessEmail || '-',
+          g.annualRevenue ? `R$ ${Number(g.annualRevenue).toLocaleString('pt-BR')}` : '-'
+        ]),
+        styles: {
+          fontSize: 8,
+          cellPadding: 2,
+        },
+        headStyles: {
+          fillColor: [16, 185, 129], // Primary color
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          halign: 'center'
+        },
+        alternateRowStyles: {
+          fillColor: [245, 247, 250]
+        },
+        columnStyles: {
+          0: { cellWidth: 30 }, // Nome
+          1: { cellWidth: 15 }, // Tipo
+          2: { cellWidth: 30 }, // Local
+          3: { cellWidth: 15, halign: 'center' }, // Capacidade
+          4: { cellWidth: 18, halign: 'center' }, // Status
+          5: { cellWidth: 15, halign: 'center' }, // Desconto
+          6: { cellWidth: 15, halign: 'center' }, // Comissão
+          7: { cellWidth: 12, halign: 'center' }, // Rating
+          8: { cellWidth: 25 }, // Empresa
+          9: { cellWidth: 25 }, // Responsável
+          10: { cellWidth: 20 }, // Telefone
+          11: { cellWidth: 30 }, // Email
+          12: { cellWidth: 20, halign: 'right' } // Receita
+        }
+      });
+
+      const pdfBlob = doc.output('blob');
+      const url = window.URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Solinvestti_Relatorio_Completo_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      triggerToast('PDF exportado com sucesso!');
+    } catch (error: any) {
+      console.error('PDF Export Error:', error);
+      triggerToast(`Erro ao exportar PDF: ${error.message || 'Erro desconhecido'}`, 'error');
+    }
   };
 
   const handleManualUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

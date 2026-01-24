@@ -4,18 +4,6 @@ import { EnergyProvider, Contract } from './types';
 
 export const ENERGY_PROVIDERS: EnergyProvider[] = [
   {
-    id: '1',
-    name: 'EcoPower Sul',
-    type: 'Solar',
-    region: 'Rio Grande do Sul',
-    discount: 18,
-    rating: 4.8,
-    estimatedSavings: 145,
-    tag: 'Maior Desconto',
-    color: 'from-blue-600 to-green-500',
-    icon: 'wb_sunny'
-  },
-  {
     id: '2',
     name: 'Solaris Tech',
     type: 'Solar',
@@ -59,6 +47,18 @@ export const ENERGY_PROVIDERS: EnergyProvider[] = [
     rating: 4.7,
     estimatedSavings: 180,
     color: 'from-green-600 to-emerald-500',
+    icon: 'wb_sunny'
+  },
+  {
+    id: '1',
+    name: 'EcoPower Sul',
+    type: 'Solar',
+    region: 'Rio Grande do Sul',
+    discount: 18,
+    rating: 4.8,
+    estimatedSavings: 145,
+    tag: 'Maior Desconto',
+    color: 'from-blue-600 to-green-500',
     icon: 'wb_sunny'
   }
 ];

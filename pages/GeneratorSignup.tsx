@@ -232,7 +232,14 @@ const GeneratorSignup: React.FC<GeneratorSignupProps> = ({ onComplete }) => {
         console.error('⚠️ Falha de conexão ao tentar disparar e-mail:', emailErr);
       }
 
-      // 5. Sucesso FINAL
+      // 5. Refresh data so admin sees the new generator immediately
+      try {
+        await onComplete();
+      } catch (refreshErr) {
+        console.warn('⚠️ Falha ao atualizar lista de geradores:', refreshErr);
+      }
+
+      // 6. Sucesso FINAL
       setIsSubmitting(false);
       setShowSuccess(true);
 

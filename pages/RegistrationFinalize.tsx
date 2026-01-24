@@ -19,6 +19,7 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
   const [fileName, setFileName] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
 
   const isUpdate = userData.isAlreadyRegistered;
 
