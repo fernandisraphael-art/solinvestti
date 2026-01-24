@@ -20,34 +20,74 @@ const LandingPage: React.FC = () => {
         </div>
       </nav>
 
-      <section className="relative pt-24 pb-20 md:pt-32 lg:pt-40 md:pb-32 lg:pb-56 overflow-hidden bg-slate-50">
+      <section className="relative pt-24 pb-12 md:pt-32 md:pb-24 overflow-hidden bg-slate-50">
         <div className="absolute top-0 right-0 w-1/2 h-full bg-slate-100/50 -skew-x-12 translate-x-1/4 -z-10"></div>
-        <div className="max-w-7xl mx-auto px-6 lg:px-10 relative">
-          <div className="max-w-3xl">
-            <div className="inline-flex items-center gap-3 px-5 py-2 rounded-full bg-primary/10 border border-primary/10 mb-10">
+        <div className="max-w-7xl mx-auto px-6 lg:px-10 relative z-10">
+          <div className="max-w-4xl mx-auto text-center">
+
+            {/* Header / Hero Content */}
+            <div className="inline-flex items-center gap-3 px-5 py-2 rounded-full bg-primary/10 border border-primary/10 mb-8 mx-auto">
               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Inteligência Financeira em Energia</span>
             </div>
 
-            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-8xl font-display font-extrabold leading-[0.9] tracking-tight text-brand-navy mb-6 md:mb-10">
+            <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-display font-extrabold leading-[0.9] tracking-tight text-brand-navy mb-8">
               Energia que gera <br />
               <span className="text-primary italic">patrimônio.</span>
             </h1>
 
-            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-brand-slate mb-8 md:mb-14 max-w-2xl leading-relaxed">
-              Transforme a economia gerada pelo seu consumo inteligente em ativos reais. A energia deixa de ser custo e passa a ser ativo financeiro.
+            <p className="text-lg sm:text-xl md:text-2xl text-brand-slate mb-12 max-w-2xl mx-auto leading-relaxed">
+              Transforme a economia gerada pelo seu consumo inteligente em ativos reais.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center gap-4">
-              <Link to="/signup" className="btn-startpro px-8 py-5 text-white font-black rounded-full text-[11px] sm:text-[12px] uppercase tracking-widest flex items-center gap-3 w-full sm:w-auto text-center justify-center shadow-xl shadow-primary/20 hover:scale-105 transition-transform">
+            {/* Integrated Who We Are Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 text-left mb-12">
+              {/* Card 1 */}
+              <div className="group p-8 rounded-3xl bg-white border border-slate-100 hover:border-slate-200 transition-all duration-500 hover:shadow-xl hover:shadow-slate-200/50 hover:-translate-y-1">
+                <div className="w-12 h-12 rounded-xl bg-brand-navy/5 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
+                  <span className="material-symbols-outlined text-2xl text-brand-navy">solar_power</span>
+                </div>
+                <h3 className="text-lg font-bold text-brand-navy mb-3">Sem Obras</h3>
+                <p className="text-brand-slate leading-relaxed text-sm">
+                  Conectamos sua conta a usinas remotas. Sem painéis no telhado.
+                </p>
+              </div>
+
+              {/* Card 2 */}
+              <div className="group p-8 rounded-3xl bg-white border border-slate-100 hover:border-slate-200 transition-all duration-500 hover:shadow-xl hover:shadow-slate-200/50 hover:-translate-y-1">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
+                  <span className="material-symbols-outlined text-2xl text-primary">trending_down</span>
+                </div>
+                <h3 className="text-lg font-bold text-brand-navy mb-3">Desconto Garantido</h3>
+                <p className="text-brand-slate leading-relaxed text-sm">
+                  Até 20% de redução na conta de luz todos os meses.
+                </p>
+              </div>
+
+              {/* Card 3 */}
+              <div className="group p-8 rounded-3xl bg-white border border-slate-100 hover:border-slate-200 transition-all duration-500 hover:shadow-xl hover:shadow-slate-200/50 hover:-translate-y-1">
+                <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
+                  <span className="material-symbols-outlined text-2xl text-green-600">savings</span>
+                </div>
+                <h3 className="text-lg font-bold text-brand-navy mb-3">Patrimônio</h3>
+                <p className="text-brand-slate leading-relaxed text-sm">
+                  Transformamos sua economia mensal em ativos reais.
+                </p>
+              </div>
+            </div>
+
+            {/* CTA Buttons (Placed after explanations as requested) */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link to="/signup" className="btn-startpro px-10 py-5 text-white font-black rounded-full text-[11px] sm:text-[12px] uppercase tracking-widest flex items-center gap-3 w-full sm:w-auto text-center justify-center shadow-xl shadow-primary/20 hover:scale-105 transition-transform hover:shadow-2xl hover:shadow-primary/30">
                 Sou Residencial ou Empresa
                 <span className="material-symbols-outlined text-lg">person</span>
               </Link>
 
-              <Link to="/generator-signup" className="px-8 py-5 bg-white text-brand-navy border border-slate-200 font-black rounded-full text-[11px] sm:text-[12px] uppercase tracking-widest flex items-center gap-3 w-full sm:w-auto text-center justify-center hover:bg-slate-50 hover:border-slate-300 transition-all hover:scale-105">
+              <Link to="/generator-signup" className="px-10 py-5 bg-white text-brand-navy border border-slate-200 font-black rounded-full text-[11px] sm:text-[12px] uppercase tracking-widest flex items-center gap-3 w-full sm:w-auto text-center justify-center hover:bg-slate-50 hover:border-slate-300 transition-all hover:scale-105 hover:shadow-lg">
                 Sou uma Geradora
                 <span className="material-symbols-outlined text-lg">solar_power</span>
               </Link>
             </div>
+
           </div>
         </div>
       </section>
@@ -62,6 +102,88 @@ const LandingPage: React.FC = () => {
           <Link to="/signup" className="btn-startpro inline-flex px-8 md:px-16 py-4 md:py-7 text-white font-black rounded-full text-sm md:text-lg uppercase tracking-widest shadow-2xl">
             Simular Agora
           </Link>
+        </div>
+      </section>
+
+      <section className="py-24 bg-slate-50">
+        <div className="max-w-7xl mx-auto px-6 lg:px-10">
+          <div className="text-center mb-16">
+            <h2 className="text-sm font-bold text-primary uppercase tracking-[0.2em] mb-4">Depoimentos</h2>
+            <h3 className="text-3xl md:text-4xl font-display font-bold text-brand-navy">
+              Quem economiza, <span className="text-primary italic">recomenda.</span>
+            </h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Testimonial 1 */}
+            <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-1 text-amber-400 mb-6">
+                <span className="material-symbols-outlined text-lg fill-current">star</span>
+                <span className="material-symbols-outlined text-lg fill-current">star</span>
+                <span className="material-symbols-outlined text-lg fill-current">star</span>
+                <span className="material-symbols-outlined text-lg fill-current">star</span>
+                <span className="material-symbols-outlined text-lg fill-current">star</span>
+              </div>
+              <p className="text-brand-slate text-lg mb-8 leading-relaxed italic">
+                "Reduzi minha conta em quase 20% sem fazer absolutamente nada. Só me cadastrei e pronto. É genial."
+              </p>
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center text-brand-navy font-bold text-lg">
+                  RC
+                </div>
+                <div>
+                  <div className="font-bold text-brand-navy">Ricardo Costa</div>
+                  <div className="text-xs text-brand-slate uppercase tracking-wider">Residencial</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Testimonial 2 */}
+            <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-1 text-amber-400 mb-6">
+                <span className="material-symbols-outlined text-lg fill-current">star</span>
+                <span className="material-symbols-outlined text-lg fill-current">star</span>
+                <span className="material-symbols-outlined text-lg fill-current">star</span>
+                <span className="material-symbols-outlined text-lg fill-current">star</span>
+                <span className="material-symbols-outlined text-lg fill-current">star</span>
+              </div>
+              <p className="text-brand-slate text-lg mb-8 leading-relaxed italic">
+                "Para meu escritório, a economia anual paga quase um mês de aluguel. E o melhor: sustentabilidade real."
+              </p>
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center text-brand-navy font-bold text-lg">
+                  AM
+                </div>
+                <div>
+                  <div className="font-bold text-brand-navy">Amanda Martins</div>
+                  <div className="text-xs text-brand-slate uppercase tracking-wider">Empresarial</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Testimonial 3 */}
+            <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center gap-1 text-amber-400 mb-6">
+                <span className="material-symbols-outlined text-lg fill-current">star</span>
+                <span className="material-symbols-outlined text-lg fill-current">star</span>
+                <span className="material-symbols-outlined text-lg fill-current">star</span>
+                <span className="material-symbols-outlined text-lg fill-current">star</span>
+                <span className="material-symbols-outlined text-lg fill-current">star</span>
+              </div>
+              <p className="text-brand-slate text-lg mb-8 leading-relaxed italic">
+                "Não é só sobre economizar, é sobre ver seu dinheiro virar patrimônio. O conceito é revolucionário."
+              </p>
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center text-brand-navy font-bold text-lg">
+                  FL
+                </div>
+                <div>
+                  <div className="font-bold text-brand-navy">Felipe Lima</div>
+                  <div className="text-xs text-brand-slate uppercase tracking-wider">Investidor</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 

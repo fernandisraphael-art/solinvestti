@@ -20,6 +20,7 @@ import { SystemProvider, useSystem } from './contexts/SystemContext';
 import { AdminService } from './lib/services/admin.service';
 import AdminControls from './components/AdminControls';
 import ScrollToTop from './components/ScrollToTop';
+import CookieConsent from './components/CookieConsent';
 
 const ProtectedRoute: React.FC<{
   children: React.ReactElement;
@@ -281,6 +282,7 @@ const App: React.FC = () => {
   return (
     <HashRouter>
       <ScrollToTop />
+      <CookieConsent />
       <div className="min-h-screen">
         <AdminControls />
         <Routes>
