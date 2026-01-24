@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { maskCurrency } from '../lib/masks';
 
@@ -21,8 +21,14 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
 
   const isUpdate = userData.isAlreadyRegistered;
 
-  // Snapshot user data for success screen to avoid flicker/empty state when parent resets userData
+  // Snapshot user data IMMMEDIATELY on mount to avoid any loss during the process
   const [finalData, setFinalData] = useState<any>(null);
+
+  useEffect(() => {
+    if (userData && !finalData) {
+      setFinalData({ ...userData });
+    }
+  }, [userData]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -47,8 +53,6 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
       }
     }
 
-    // Save snapshot of data before it might be cleared by parent
-    setFinalData({ ...userData });
     setIsFinalizing(true);
 
     try {
@@ -116,7 +120,7 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
                 <div className="flex items-center gap-3 mb-2">
                   <span className="material-symbols-outlined text-primary text-xl">bolt</span>
                   <p className="text-xs text-slate-600 dark:text-slate-400">
-                    <span className="font-bold text-primary">{finalData.selectedProvider?.name}</span> entrará em contato em breve.
+                    <span className="font-bold text-primary">{finalData.selectedProvider?.name || 'A Usina'}</span> entrará em contato em breve.
                   </p>
                 </div>
               </div>
