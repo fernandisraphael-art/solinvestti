@@ -181,8 +181,8 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, fixedRole }) => {
 
   // ... (render start) ...
   return (
-    <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center p-6 font-sans">
-      <div className="w-full max-w-[520px] bg-white rounded-[3.5rem] shadow-[0_30px_100px_-20px_rgba(0,0,0,0.06)] p-10 lg:p-14 border border-slate-100 relative overflow-hidden">
+    <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center p-4 md:p-6 font-sans">
+      <div className="w-full max-w-[520px] bg-white rounded-[2rem] md:rounded-[3.5rem] shadow-[0_30px_100px_-20px_rgba(0,0,0,0.06)] p-6 sm:p-8 md:p-10 lg:p-14 border border-slate-100 relative overflow-hidden">
         {/* BOTÃO VOLTAR À PÁGINA INICIAL */}
         <div className="mb-6">
           <Link to="/" className="inline-flex items-center gap-2 text-brand-slate hover:text-primary transition-colors text-[10px] font-black uppercase tracking-[0.2em] group">
@@ -200,11 +200,11 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, fixedRole }) => {
           </div>
         )}
 
-        <div className="text-center mb-12">
-          <div className="size-16 bg-brand-navy rounded-[1.5rem] flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-brand-navy/20">
-            <span className="material-symbols-outlined text-white text-3xl">account_balance</span>
+        <div className="text-center mb-8 md:mb-12">
+          <div className="size-12 md:size-16 bg-brand-navy rounded-[1rem] md:rounded-[1.5rem] flex items-center justify-center mx-auto mb-6 md:mb-8 shadow-2xl shadow-brand-navy/20">
+            <span className="material-symbols-outlined text-white text-2xl md:text-3xl">account_balance</span>
           </div>
-          <h1 className="text-4xl font-display font-black text-brand-navy mb-3 tracking-tight">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-black text-brand-navy mb-2 md:mb-3 tracking-tight">
             {fixedRole === UserRole.ADMIN ? 'Acesso Administrativo' : (isLoginMode ? 'Acesse sua Conta' : 'Crie seu Perfil')}
           </h1>
           <p className="text-brand-slate text-sm font-medium opacity-60 uppercase tracking-widest text-[11px]">
@@ -296,7 +296,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, fixedRole }) => {
                 className="w-full bg-slate-50/50 border border-slate-100 rounded-2xl px-6 py-5 outline-none focus:ring-4 ring-primary/5 font-bold text-brand-navy text-sm placeholder:text-slate-300 transition-all"
                 placeholder={activeRole === UserRole.ADMIN ? "usuario" : "exemplo@email.com"}
                 value={formData.email}
-                onChange={e => setFormData({ ...formData, email: e.target.value })}
+                onChange={e => setFormData({ ...formData, email: e.target.value.toLowerCase() })}
               />
             </div>
 
@@ -309,7 +309,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, fixedRole }) => {
                   className="w-full bg-slate-50/50 border border-slate-100 rounded-2xl px-6 py-5 outline-none focus:ring-4 ring-primary/5 font-bold text-brand-navy text-sm placeholder:text-slate-300 transition-all"
                   placeholder="Repita seu e-mail"
                   value={formData.confirmEmail}
-                  onChange={e => setFormData({ ...formData, confirmEmail: e.target.value })}
+                  onChange={e => setFormData({ ...formData, confirmEmail: e.target.value.toLowerCase() })}
                 />
               </div>
             )}

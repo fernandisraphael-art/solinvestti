@@ -16,7 +16,7 @@ const ConsumerSavings: React.FC<{ userData: any }> = ({ userData }) => {
     const res = await analyzeEnergyProfile(originalBill, userData.state || 'SP');
     const realSavings = originalBill * providerDiscount;
     const realNewBill = originalBill - realSavings;
-    
+
     setAnalysis({
       ...res,
       economia_mensal_estimada: realSavings,
@@ -32,97 +32,139 @@ const ConsumerSavings: React.FC<{ userData: any }> = ({ userData }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-brand-navy flex flex-col items-center justify-center p-8 text-center font-sans">
-        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-6"></div>
-        <h2 className="text-2xl font-black text-white mb-2 tracking-tight">Processando Ativos Financeiros...</h2>
-        <p className="text-slate-500 uppercase text-[10px] font-black tracking-widest">Transformando custo em patrimônio</p>
+      <div className="min-h-screen bg-brand-navy flex flex-col items-center justify-center p-4 text-center font-sans">
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+        <h2 className="text-xl font-black text-white mb-1 tracking-tight">Processando...</h2>
+        <p className="text-slate-500 uppercase text-[9px] font-black tracking-widest">Transformando custo em patrimônio</p>
       </div>
     );
   }
 
   const annualSavings = (analysis?.economia_mensal_estimada || 0) * 12;
+  const efficiencyPercent = (providerDiscount * 100).toFixed(0);
 
   return (
-    <div className="min-h-screen bg-brand-navy text-white p-6 md:p-12 font-sans overflow-hidden relative">
-      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[120px] -mr-48 -mt-48"></div>
+    <div className="min-h-screen bg-brand-navy text-white font-sans flex flex-col">
+      {/* Header Fixo */}
+      <nav className="px-4 md:px-8 py-4 flex items-center justify-between border-b border-white/5">
+        <button
+          onClick={() => navigate('/marketplace')}
+          className="text-slate-400 hover:text-white transition-colors flex items-center gap-2 text-sm font-bold group"
+        >
+          <span className="material-symbols-outlined text-lg group-hover:-translate-x-1 transition-transform">arrow_back</span>
+          Voltar
+        </button>
+        <div className="flex items-center gap-2 text-primary text-[10px] font-black uppercase tracking-widest">
+          <span className="material-symbols-outlined text-sm">verified</span>
+          {userData.selectedProvider?.name || 'Usina Selecionada'}
+        </div>
+      </nav>
 
-      <div className="max-w-5xl mx-auto space-y-12 relative z-10">
-        <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest mb-4">
-              Crescimento Patrimonial Estimado
-            </div>
-            <h1 className="text-5xl md:text-6xl font-display font-black tracking-tighter mb-4">Seu Novo Ativo.</h1>
-            <p className="text-slate-400 text-lg max-w-xl font-medium">
-              Sua economia mensal de <span className="text-white">R$ {analysis?.economia_mensal_estimada.toLocaleString('pt-BR')}</span> não é apenas um desconto, é capital para investimento.
-            </p>
-          </div>
-          <div className="bg-white/5 border border-white/10 px-8 py-6 rounded-3xl backdrop-blur-xl">
-             <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">Passivo Mensal (Luz)</p>
-             <p className="text-2xl font-black">R$ {originalBill.toLocaleString('pt-BR')}</p>
-          </div>
-        </header>
+      {/* Conteúdo Principal */}
+      <main className="flex-1 px-4 md:px-8 py-6 max-w-6xl mx-auto w-full flex flex-col">
 
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-          <div className="md:col-span-8 bg-brand-deep/50 p-10 rounded-[3rem] border border-white/5 shadow-2xl relative overflow-hidden group">
-            <div className="flex justify-between items-start mb-12">
-              <span className="text-slate-400 font-black text-[10px] uppercase tracking-[0.2em]">Lucro Operacional Líquido</span>
-              <span className="bg-primary text-brand-navy px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest">Adesão Free</span>
-            </div>
-            <div className="mb-12">
-              <span className="text-7xl md:text-9xl font-display font-black tracking-tighter text-gradient-green">
-                R$ {analysis?.economia_mensal_estimada.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
-              </span>
-              <p className="text-slate-500 mt-6 text-sm font-bold italic">"{analysis?.dica_investimento}"</p>
-            </div>
-            <div className="space-y-4 pt-4">
-              <div className="flex justify-between text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                <span>Novo Custo de Manutenção</span>
-                <span className="text-primary">Margem de Eficiência: {providerDiscount*100}%</span>
+        {/* Comparativo Visual: Antes vs Depois */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          {/* Antes */}
+          <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 text-center">
+            <p className="text-[9px] font-black text-red-400 uppercase tracking-wider mb-1">Você pagava</p>
+            <p className="text-2xl md:text-3xl font-display font-black text-red-400">R$ {originalBill.toLocaleString('pt-BR')}</p>
+          </div>
+
+          {/* Economia (Destaque Central) */}
+          <div className="bg-primary rounded-2xl p-4 text-center shadow-xl shadow-primary/30 transform scale-105">
+            <p className="text-[9px] font-black text-brand-navy uppercase tracking-wider mb-1">Você economiza</p>
+            <p className="text-2xl md:text-3xl font-display font-black text-brand-navy">R$ {analysis?.economia_mensal_estimada.toLocaleString('pt-BR')}</p>
+          </div>
+
+          {/* Depois */}
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider mb-1">Você paga</p>
+            <p className="text-2xl md:text-3xl font-display font-black text-white">R$ {analysis?.novo_valor_conta.toLocaleString('pt-BR')}</p>
+          </div>
+        </div>
+
+        {/* Título e Badge */}
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[9px] font-black uppercase tracking-widest mb-2">
+            <span className="material-symbols-outlined text-sm">trending_up</span>
+            {efficiencyPercent}% de eficiência garantida
+          </div>
+          <h1 className="text-3xl md:text-4xl font-display font-black tracking-tight">
+            Transforme economia em <span className="text-primary">patrimônio</span>
+          </h1>
+        </div>
+
+        {/* Card de Projeção Patrimonial */}
+        <div className="bg-brand-deep/60 border border-white/5 rounded-3xl p-6 mb-6 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-primary/10 rounded-full blur-3xl -mr-24 -mt-24"></div>
+
+          <div className="relative z-10">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+              {/* Economia Acumulada */}
+              <div className="text-center md:text-left">
+                <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-2">Patrimônio em 12 meses</p>
+                <p className="text-5xl md:text-6xl font-display font-black text-gradient-green tracking-tight">
+                  R$ {annualSavings.toLocaleString('pt-BR')}
+                </p>
+                <p className="text-slate-500 text-xs mt-2 italic max-w-sm">
+                  "{analysis?.dica_investimento}"
+                </p>
               </div>
-              <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                <div className="h-full bg-primary" style={{ width: `${(analysis?.novo_valor_conta / originalBill) * 100}%` }}></div>
+
+              {/* Indicadores */}
+              <div className="flex gap-3">
+                <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center min-w-[100px]">
+                  <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Por mês</p>
+                  <p className="text-lg font-black text-primary">+R$ {analysis?.economia_mensal_estimada.toLocaleString('pt-BR')}</p>
+                </div>
+                <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center min-w-[100px]">
+                  <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Desconto</p>
+                  <p className="text-lg font-black text-white">{efficiencyPercent}%</p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="md:col-span-4 flex flex-col gap-6">
-            <div className="bg-white/5 border border-white/10 p-8 rounded-3xl flex flex-col justify-center">
-              <p className="text-slate-500 text-[10px] font-black mb-2 uppercase tracking-widest">Gasto Otimizado</p>
-              <p className="text-4xl font-black">R$ {analysis?.novo_valor_conta.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</p>
-            </div>
-            <div className="bg-primary p-8 rounded-3xl flex flex-col justify-center shadow-2xl shadow-primary/20">
-              <p className="text-brand-navy text-[10px] font-black mb-1 uppercase tracking-widest">Patrimônio em 1 ano</p>
-              <p className="text-4xl font-black text-brand-navy">R$ {annualSavings.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</p>
+            {/* Barra de Progresso */}
+            <div className="mt-6 pt-4 border-t border-white/5">
+              <div className="flex justify-between text-[9px] font-black text-slate-500 uppercase tracking-wider mb-2">
+                <span>Seu novo custo mensal</span>
+                <span className="text-primary">{efficiencyPercent}% mais barato</span>
+              </div>
+              <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-primary to-emerald-400 rounded-full transition-all duration-1000"
+                  style={{ width: `${100 - providerDiscount * 100}%` }}
+                ></div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Action Section */}
-        <div className="bg-white/5 border border-white/10 p-10 rounded-[3rem] text-center md:text-left">
-           <div className="flex flex-col md:flex-row items-center justify-between gap-10">
-              <div>
-                <h3 className="text-2xl font-display font-black mb-2 tracking-tight">Pronto para converter?</h3>
-                <p className="text-slate-400 font-medium">Escolha onde alocar seu lucro mensal e finalize sua adesão institucional.</p>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-                <button 
-                  onClick={() => navigate('/investments')}
-                  className="btn-startpro px-12 py-6 text-white font-black rounded-2xl flex items-center justify-center gap-3"
-                >
-                  Investir Ganhos
-                  <span className="material-symbols-outlined">payments</span>
-                </button>
-                <button 
-                  onClick={() => navigate('/finalize')}
-                  className="px-12 py-6 bg-white/5 hover:bg-white/10 text-white font-black rounded-2xl border border-white/10 transition-all"
-                >
-                  Apenas Finalizar
-                </button>
-              </div>
-           </div>
+        {/* CTA Section */}
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-center sm:text-left">
+              <h3 className="text-lg font-display font-black tracking-tight mb-1">Pronto para converter?</h3>
+              <p className="text-slate-400 text-xs">Escolha onde alocar sua economia mensal.</p>
+            </div>
+            <div className="flex gap-3 w-full sm:w-auto">
+              <button
+                onClick={() => navigate('/investments')}
+                className="flex-1 sm:flex-none btn-startpro px-8 py-4 text-white font-black rounded-xl flex items-center justify-center gap-2 text-sm shadow-xl shadow-primary/20"
+              >
+                Investir Ganhos <span className="material-symbols-outlined text-lg">payments</span>
+              </button>
+              <button
+                onClick={() => navigate('/finalize')}
+                className="flex-1 sm:flex-none px-8 py-4 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl border border-white/10 transition-all text-sm"
+              >
+                Finalizar
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 };

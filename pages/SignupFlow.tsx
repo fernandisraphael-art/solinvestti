@@ -99,7 +99,7 @@ const SignupFlow: React.FC<{ onComplete: (data: any) => void }> = ({ onComplete 
                     className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-4 outline-none text-slate-900 dark:text-white"
                     placeholder="joao@email.com"
                     value={formData.email}
-                    onChange={e => setFormData({ ...formData, email: e.target.value })}
+                    onChange={e => setFormData({ ...formData, email: e.target.value.toLowerCase() })}
                   />
                 </div>
                 <div>

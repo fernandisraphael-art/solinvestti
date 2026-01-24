@@ -65,23 +65,23 @@ export const ENERGY_PROVIDERS: EnergyProvider[] = [
 
 export const MOCK_CONTRACTS: Contract[] = [
   {
-    id: '#CT-2024-001',
+    id: '#CT-2025-001',
     client: 'Indústrias Metalúrgicas SA',
     type: 'Empresa',
     region: 'Sudeste / SP',
     energy: 1.5,
     discount: 12,
     status: 'Ativo',
-    validity: 'Jan 24 - Dez 28'
+    validity: 'Jan 25 - Dez 29'
   },
   {
-    id: '#CT-2024-042',
+    id: '#CT-2025-042',
     client: 'Varejo Silva Ltda',
     type: 'Loja',
     region: 'Sul / PR',
     energy: 0.3,
     discount: 8,
     status: 'Pendente',
-    validity: 'Ago 24 - Ago 29'
+    validity: 'Ago 25 - Ago 30'
   }
 ];

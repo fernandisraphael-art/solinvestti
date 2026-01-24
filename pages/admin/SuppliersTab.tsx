@@ -74,6 +74,23 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({
         };
     };
     const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+    const exportMenuRef = React.useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+                setIsExportMenuOpen(false);
+            }
+        };
+
+        if (isExportMenuOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [isExportMenuOpen]);
 
     const pendingCount = generators.filter(g => g.status === 'pending').length;
 
@@ -92,7 +109,7 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({
                     <span className="material-symbols-outlined text-sm">add_circle</span> Novo Gerador
                 </button>
 
-                <div className="relative">
+                <div className="relative" ref={exportMenuRef}>
                     <button
                         onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
                         className="px-5 py-2.5 bg-[#0c112b] border border-white/5 text-white rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-white/5 transition-all flex items-center gap-2"
@@ -102,10 +119,10 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({
 
                     {isExportMenuOpen && (
                         <div className="absolute top-full right-0 mt-2 bg-[#0c112b] border border-white/10 rounded-xl p-2 flex flex-col w-40 shadow-2xl z-50">
-                            <button onClick={onExportExcel} className="flex items-center gap-2 px-4 py-3 hover:bg-white/5 rounded-lg text-left text-xs font-bold text-white transition-colors">
+                            <button onClick={() => { onExportExcel(); setIsExportMenuOpen(false); }} className="flex items-center gap-2 px-4 py-3 hover:bg-white/5 rounded-lg text-left text-xs font-bold text-white transition-colors">
                                 <span className="material-symbols-outlined text-green-500 text-sm">table_view</span> Excel (.xlsx)
                             </button>
-                            <button onClick={onExportPDF} className="flex items-center gap-2 px-4 py-3 hover:bg-white/5 rounded-lg text-left text-xs font-bold text-white transition-colors">
+                            <button onClick={() => { onExportPDF(); setIsExportMenuOpen(false); }} className="flex items-center gap-2 px-4 py-3 hover:bg-white/5 rounded-lg text-left text-xs font-bold text-white transition-colors">
                                 <span className="material-symbols-outlined text-red-500 text-sm">picture_as_pdf</span> PDF
                             </button>
                         </div>

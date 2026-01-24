@@ -240,7 +240,7 @@ const ConsumerDashboard: React.FC<ConsumerDashboardProps> = ({ userData, onUpdat
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-brand-slate/60 uppercase tracking-widest mb-3 ml-1">E-mail</label>
-                  <input className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 outline-none focus:ring-4 ring-primary/5 font-bold text-brand-navy text-sm" value={editData.email} onChange={e => setEditData({ ...editData, email: e.target.value })} />
+                  <input className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 outline-none focus:ring-4 ring-primary/5 font-bold text-brand-navy text-sm" value={editData.email} onChange={e => setEditData({ ...editData, email: e.target.value.toLowerCase() })} />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-brand-slate/60 uppercase tracking-widest mb-3 ml-1">Telefone / WhatsApp</label>
@@ -404,7 +404,7 @@ const ConsumerDashboard: React.FC<ConsumerDashboardProps> = ({ userData, onUpdat
           <div className="flex-1 bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-premium flex items-center gap-6">
             <div className="size-14 bg-brand-navy/5 text-brand-navy rounded-2xl flex items-center justify-center shrink-0"><span className="material-symbols-outlined">receipt_long</span></div>
             <div>
-              <p className="text-xs font-bold text-brand-navy">Última fatura processada: Outubro/2024</p>
+              <p className="text-xs font-bold text-brand-navy">Última fatura processada: Janeiro/2025</p>
               <p className="text-[10px] text-brand-slate mt-1">Sincronizado com a {userData.selectedProvider?.name || 'concessionária local'}.</p>
             </div>
           </div>
@@ -427,7 +427,7 @@ const ConsumerDashboard: React.FC<ConsumerDashboardProps> = ({ userData, onUpdat
         </div>
 
         <div className="mt-20 pt-12 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
-          <p className="text-[10px] font-black text-brand-slate uppercase tracking-widest">© 2024 SOLINVESTTI Finance & Energy</p>
+          <p className="text-[10px] font-black text-brand-slate uppercase tracking-widest">© 2025 SOLINVESTTI Finance & Energy</p>
           <div className="flex gap-8">
             <button className="text-[10px] font-black text-brand-navy uppercase tracking-widest hover:text-primary transition-colors">Solicitar Resgate</button>
             <button className="text-[10px] font-black text-brand-navy uppercase tracking-widest hover:text-primary transition-colors">Suporte 24h</button>

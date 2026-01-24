@@ -20,7 +20,7 @@ const LandingPage: React.FC = () => {
         </div>
       </nav>
 
-      <section className="relative pt-32 pb-32 lg:pt-40 lg:pb-56 overflow-hidden bg-slate-50">
+      <section className="relative pt-24 pb-20 md:pt-32 lg:pt-40 md:pb-32 lg:pb-56 overflow-hidden bg-slate-50">
         <div className="absolute top-0 right-0 w-1/2 h-full bg-slate-100/50 -skew-x-12 translate-x-1/4 -z-10"></div>
         <div className="max-w-7xl mx-auto px-6 lg:px-10 relative">
           <div className="max-w-3xl">
@@ -28,12 +28,12 @@ const LandingPage: React.FC = () => {
               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Inteligência Financeira em Energia</span>
             </div>
 
-            <h1 className="text-6xl md:text-8xl font-display font-extrabold leading-[0.9] tracking-tight text-brand-navy mb-10">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-8xl font-display font-extrabold leading-[0.9] tracking-tight text-brand-navy mb-6 md:mb-10">
               Energia que gera <br />
               <span className="text-primary italic">patrimônio.</span>
             </h1>
 
-            <p className="text-xl md:text-2xl text-brand-slate mb-14 max-w-2xl leading-relaxed">
+            <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-brand-slate mb-8 md:mb-14 max-w-2xl leading-relaxed">
               Transforme a economia gerada pelo seu consumo inteligente em ativos reais. A energia deixa de ser custo e passa a ser ativo financeiro.
             </p>
 
@@ -56,10 +56,10 @@ const LandingPage: React.FC = () => {
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
         <div className="max-w-7xl mx-auto relative z-10">
           <h2 className="text-primary font-black text-xl mb-8">"Energia é o meio. Finanças são o fim. Patrimônio é o resultado."</h2>
-          <h3 className="text-4xl md:text-6xl font-display font-extrabold text-white mb-12 max-w-4xl mx-auto leading-tight">
+          <h3 className="text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-display font-extrabold text-white mb-8 md:mb-12 max-w-4xl mx-auto leading-tight px-4">
             Pronto para transformar sua conta de luz em um ativo financeiro?
           </h3>
-          <Link to="/signup" className="btn-startpro inline-flex px-16 py-7 text-white font-black rounded-full text-lg uppercase tracking-widest shadow-2xl">
+          <Link to="/signup" className="btn-startpro inline-flex px-8 md:px-16 py-4 md:py-7 text-white font-black rounded-full text-sm md:text-lg uppercase tracking-widest shadow-2xl">
             Simular Agora
           </Link>
         </div>
@@ -84,7 +84,7 @@ const LandingPage: React.FC = () => {
             <div>
               <h5 className="font-bold text-brand-navy mb-6">Institucional</h5>
               <ul className="space-y-4 text-sm text-brand-slate font-medium">
-                <li><span className="text-slate-400">Quem Somos</span></li>
+                <li><Link to="/about" className="hover:text-primary transition-colors">Quem Somos</Link></li>
                 <li><span className="text-slate-400">Termos de Uso</span></li>
               </ul>
             </div>
@@ -114,7 +114,7 @@ const LandingPage: React.FC = () => {
             </div>
           </div>
           <div className="mt-20 pt-10 border-t border-slate-50 text-center flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-[10px] font-bold text-brand-slate uppercase tracking-widest">© 2024 SOLINVESTTI Finance & Energy. Todos os direitos reservados.</p>
+            <p className="text-[10px] font-bold text-brand-slate uppercase tracking-widest">© 2025 SOLINVESTTI Finance & Energy. Todos os direitos reservados.</p>
             <Link to="/admin-login" className="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em] hover:text-brand-navy transition-colors">
               Admin
             </Link>

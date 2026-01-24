@@ -13,6 +13,93 @@ interface ConsumerMarketplaceProps {
   onSelect: (data: any) => void;
 }
 
+// Componente de Contato com Agente Comercial - Design compacto inline
+const ContactSection: React.FC<{ userEmail?: string }> = ({ userEmail }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [email, setEmail] = useState(userEmail || '');
+  const [message, setMessage] = useState('');
+  const [isSent, setIsSent] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const subject = encodeURIComponent('Consulta Comercial - Solinvestti');
+    const body = encodeURIComponent(`E-mail: ${email}\n\nMensagem:\n${message}`);
+    window.location.href = `mailto:comercial@solinvestti.com.br?subject=${subject}&body=${body}`;
+    setIsSent(true);
+    setTimeout(() => {
+      setIsOpen(false);
+      setIsSent(false);
+    }, 2000);
+  };
+
+  if (!isOpen) {
+    return (
+      <button
+        onClick={() => setIsOpen(true)}
+        className="w-full bg-brand-navy/5 hover:bg-brand-navy/10 border-2 border-dashed border-brand-navy/20 hover:border-primary/50 rounded-2xl p-5 transition-all group flex items-center justify-between"
+      >
+        <div className="flex items-center gap-4">
+          <div className="size-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+            <span className="material-symbols-outlined text-primary text-xl">support_agent</span>
+          </div>
+          <div className="text-left">
+            <p className="font-bold text-brand-navy text-sm">É uma empresa ou grande consumidor?</p>
+            <p className="text-xs text-brand-slate">Consulte nosso agente comercial para taxas diferenciadas</p>
+          </div>
+        </div>
+        <span className="material-symbols-outlined text-brand-navy/40 group-hover:text-primary transition-colors">arrow_forward</span>
+      </button>
+    );
+  }
+
+  return (
+    <div className="w-full bg-brand-navy rounded-2xl p-6 animate-in fade-in zoom-in-95 duration-300">
+      {isSent ? (
+        <div className="py-4 text-center flex items-center justify-center gap-3">
+          <span className="material-symbols-outlined text-2xl text-primary">check_circle</span>
+          <p className="text-white font-bold text-sm">Abrindo seu cliente de e-mail...</p>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit}>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-white font-bold text-sm flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary text-lg">mail</span>
+              Fale com nosso time comercial
+            </p>
+            <button type="button" onClick={() => setIsOpen(false)} className="text-white/40 hover:text-white transition-colors">
+              <span className="material-symbols-outlined text-lg">close</span>
+            </button>
+          </div>
+
+          <div className="flex flex-col md:flex-row gap-3">
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value.toLowerCase())}
+              placeholder="Seu e-mail"
+              className="flex-1 bg-white/10 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm placeholder:text-white/40 outline-none focus:border-primary transition-colors"
+            />
+            <input
+              required
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Descreva sua necessidade..."
+              className="flex-[2] bg-white/10 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm placeholder:text-white/40 outline-none focus:border-primary transition-colors"
+            />
+            <button
+              type="submit"
+              className="btn-startpro px-6 py-2.5 text-white font-bold text-xs uppercase tracking-wider rounded-lg flex items-center justify-center gap-2 whitespace-nowrap"
+            >
+              Enviar <span className="material-symbols-outlined text-sm">send</span>
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+};
+
 const ConsumerMarketplace: React.FC<ConsumerMarketplaceProps> = ({ userData, generators, onSelect }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -48,30 +135,31 @@ const ConsumerMarketplace: React.FC<ConsumerMarketplaceProps> = ({ userData, gen
             <Logo variant="dark" />
           </Link>
 
-          <div className="flex items-center gap-6">
-            <div className="text-right hidden sm:block">
-              <p className="text-[9px] font-black text-brand-slate uppercase tracking-widest">Acesso Usuário</p>
-              <p className="text-xs font-bold text-brand-navy">{userData.name || 'Convidado'}</p>
-            </div>
-            <div className="size-11 rounded-full bg-white shadow-premium flex items-center justify-center border border-slate-100">
-              <span className="material-symbols-outlined text-brand-navy">person</span>
-            </div>
-          </div>
+          <Link to="/signup" className="flex items-center gap-2 text-brand-navy hover:text-primary transition-colors">
+            <span className="material-symbols-outlined text-lg">arrow_back</span>
+            <span className="text-xs font-bold hidden sm:inline">Voltar</span>
+          </Link>
         </div>
       </nav>
 
       <main className="max-w-7xl mx-auto px-6 py-16">
-        <div className="flex flex-col lg:flex-row justify-between items-start gap-16 mb-20">
+        <ContactSection userEmail={userData.email} />
+
+        <div className="flex flex-col lg:flex-row justify-between items-start gap-16 mb-12 mt-8">
           <div className="max-w-2xl">
             <span className="inline-block px-4 py-1.5 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest mb-6">Marketplace Institucional v4.0</span>
             <h2 className="text-5xl font-display font-extrabold text-brand-navy mb-6">Ranking das Geradoras</h2>
             <p className="text-lg text-brand-slate leading-relaxed">
-              Baseado no seu perfil de consumo em <span className="text-brand-navy font-bold">{userData.state || 'Brasil'}</span>, selecionamos as usinas com maior potencial de retorno financeiro.
+              {userData.state
+                ? <>Baseado no seu perfil de consumo em <span className="text-brand-navy font-bold">{userData.state}</span>, selecionamos as usinas com maior potencial de retorno financeiro.</>
+                : <>Selecionamos as usinas com maior potencial de retorno financeiro para você.</>
+              }
             </p>
           </div>
 
           <BillInput value={billValue} onChange={setBillValue} />
         </div>
+
 
         <div className="space-y-6">
           {rankedProviders.map((provider, index) => (
@@ -92,12 +180,6 @@ const ConsumerMarketplace: React.FC<ConsumerMarketplaceProps> = ({ userData, gen
           )}
         </div>
 
-        <div className="mt-20 p-12 bg-brand-navy rounded-[3rem] text-center max-w-4xl mx-auto shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 blur-3xl rounded-full"></div>
-          <h4 className="text-2xl font-display font-bold text-white mb-4">Análise Personalizada?</h4>
-          <p className="text-white/60 mb-8 max-w-xl mx-auto">Grandes consumidores industriais possuem taxas de desconto diferenciadas. Fale com um consultor sênior.</p>
-          <button className="text-primary font-black text-xs uppercase tracking-[0.3em] hover:text-white transition-colors">Solicitar Auditoria Corporativa</button>
-        </div>
       </main>
     </div >
   );

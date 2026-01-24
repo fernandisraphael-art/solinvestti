@@ -65,7 +65,9 @@ const GeneratorDashboard: React.FC<GeneratorDashboardProps> = ({ generatorData, 
 
   const handleProfileChange = (field: string, value: string) => {
     const skipNormalization = ['email', 'password', 'energyCapacity'].includes(field);
-    const normalizedValue = skipNormalization ? value : normalizeText(value);
+    let normalizedValue = skipNormalization ? value : normalizeText(value);
+    // Sempre converter e-mail para minúsculo
+    if (field === 'email') normalizedValue = value.toLowerCase();
     setProfileForm(prev => ({ ...prev, [field]: normalizedValue }));
   };
 

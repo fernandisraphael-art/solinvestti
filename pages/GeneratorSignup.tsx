@@ -138,43 +138,8 @@ const GeneratorSignup: React.FC<GeneratorSignupProps> = ({ onComplete }) => {
     setIsSubmitting(true);
 
     try {
-      // Validação Inicial
-      if (formData.email !== formData.confirmEmail) throw new Error('Os e-mails informados não coincidem.');
-      if (formData.password !== formData.confirmPassword) throw new Error('As senhas informadas não coincidem.');
-
-      let userId: string | null = null;
-
-      // 1. TRY to sign up user in Supabase Auth (but don't block if it fails)
-      try {
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-        });
-
-        if (authError) {
-          console.warn("⚠️ Auth signup warning (might be duplicate):", authError.message);
-          // Continue anyway - user might already exist
-        } else if (authData.user) {
-          userId = authData.user.id;
-
-          // 2. Create profile entry (only if we got a new user)
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .insert({
-              id: authData.user.id,
-              name: formData.contactName,
-              role: UserRole.GENERATOR
-            });
-
-          if (profileError) console.error("Erro ao criar perfil (não fatal):", profileError);
-        }
-      } catch (authErr: any) {
-        console.warn("⚠️ Auth signup failed:", authErr.message);
-        // Continue anyway
-      }
-
-      // 3. Create Generator Registry (Direct Insert - NOT RPC, to handle null user_id)
-      const { error: genError } = await supabase.from('generators').insert({
+      // 3. Create Generator Registry
+      const generatorPayload = {
         name: formData.socialName,
         type: 'Solar',
         region: `${formData.locationCity} / ${formData.locationState}`,
@@ -182,7 +147,7 @@ const GeneratorSignup: React.FC<GeneratorSignupProps> = ({ onComplete }) => {
         responsible_phone: formData.contactPhone,
         capacity: Number(formData.energyCapacity),
         access_email: formData.email,
-        access_password: formData.password,
+        access_password: '', // Senha vazia
         status: 'pending',
         rating: 5,
         discount: 15,
@@ -192,26 +157,84 @@ const GeneratorSignup: React.FC<GeneratorSignupProps> = ({ onComplete }) => {
         company: formData.socialName,
         color: 'from-emerald-500 to-teal-600',
         icon: 'solar_power'
-      });
+      };
 
-      if (genError) throw genError;
+      let insertError: any = null;
+
+      // Tentativa 1: SDK
+      try {
+        const { error } = await supabase.from('generators').insert(generatorPayload);
+        if (error) insertError = error;
+      } catch (err: any) {
+        insertError = err;
+      }
+
+      // Tentativa 2: Fallback direto (se houver erro no SDK)
+      if (insertError) {
+        console.warn('⚠️ SDK Insert falhou, tentando direct fetch...', insertError);
+        try {
+          // Import dinâmico ou assumindo que a função está disponível
+          // Como não posso importar dinamicamente fácil aqui sem mudar topos, vou assumir import
+          // Mas wait, preciso importar a função. Vou adicionar o import no topo depois.
+          // Por enquanto, vou colar a lógica aqui se não conseguir importar no replace único ou usar require?
+          // Não, imports devem ser no topo. Vou usar fetch direto aqui mesmo para garantir.
+
+          const url = import.meta.env.VITE_SUPABASE_URL;
+          const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+          if (!url || !key) throw new Error('Configuração ausente');
+
+          const res = await fetch(`${url}/rest/v1/generators`, {
+            method: 'POST',
+            headers: {
+              'apikey': key,
+              'Authorization': `Bearer ${key}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=representation'
+            },
+            body: JSON.stringify(generatorPayload)
+          });
+
+          if (!res.ok) {
+            const txt = await res.text();
+            throw new Error(`Erro API: ${txt}`);
+          }
+
+          // Sucesso no fallback! Limpar erro
+          console.log('✅ Fallback insert via fetch funcionou!');
+          insertError = null;
+
+        } catch (fallbackErr: any) {
+          console.error('❌ Falha fatal no insert:', fallbackErr);
+          // Manter o erro original ou o do fallback
+          insertError = fallbackErr || insertError;
+        }
+      }
+
+      if (insertError) {
+        // Verificar duplicata real
+        const isDuplicate = insertError.message?.includes('duplicate') || insertError.code === '23505';
+        if (!isDuplicate) {
+          throw insertError; // Lança o erro para o catch principal mostrar o alert
+        }
+        console.log('⚠️ Duplicata detectada (ignorado).');
+      }
 
       // 4. Trigger Email Notification via Edge Function (FAIL-SAFE)
       try {
         console.log('📧 Tentando enviar e-mail...');
         await supabase.functions.invoke('send-registration-email', {
           body: { generator: formData }
-        }).then(({ error }) => {
-          if (error) console.error('⚠️ Retorno de erro da Edge Function:', error);
-          else console.log('✅ E-mail disparado via Edge Function.');
+        }).catch(() => {
+          console.log('⚠️ Edge function não disponível, ignorando...');
         });
       } catch (emailErr) {
         console.error('⚠️ Falha de conexão ao tentar disparar e-mail:', emailErr);
       }
 
       // 5. Sucesso FINAL
-      alert('Cadastro realizado com sucesso! Em breve nossa equipe entrará em contato.');
-      navigate('/');
+      setIsSubmitting(false);
+      setShowSuccess(true);
 
     } catch (error: any) {
       console.error("❌ Erro fatal no cadastro:", error);
@@ -221,6 +244,36 @@ const GeneratorSignup: React.FC<GeneratorSignupProps> = ({ onComplete }) => {
       console.log('🔚 Processo de submissão finalizado.');
     }
   };
+
+  // Tela de Sucesso
+  if (showSuccess) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 font-sans">
+        <div className="w-full max-w-[500px] bg-white rounded-[3rem] shadow-premium p-12 text-center border border-slate-100">
+          <div className="size-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-8">
+            <span className="material-symbols-outlined text-primary text-4xl">verified</span>
+          </div>
+          <h2 className="text-3xl font-display font-black text-brand-navy mb-4">
+            Usina Cadastrada!
+          </h2>
+          <p className="text-brand-slate text-sm leading-relaxed mb-8">
+            Um <span className="font-bold text-brand-navy">especialista da Solinvestti</span> entrará em contato para validação da sua geradora e ativação no nosso Marketplace.
+          </p>
+          <div className="bg-primary/5 rounded-2xl p-4 mb-8">
+            <p className="text-xs text-primary font-bold uppercase tracking-wider">
+              Aguarde nosso contato em até 48 horas úteis
+            </p>
+          </div>
+          <button
+            onClick={() => navigate('/')}
+            className="w-full btn-startpro py-5 text-white font-black rounded-2xl shadow-xl flex items-center justify-center gap-2 text-sm uppercase tracking-widest"
+          >
+            Voltar ao Início <span className="material-symbols-outlined">home</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 font-sans">
@@ -390,49 +443,20 @@ const GeneratorSignup: React.FC<GeneratorSignupProps> = ({ onComplete }) => {
                   </div>
 
                   <div className="p-8 bg-slate-50 rounded-[2rem] border border-slate-100 space-y-4">
-                    <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-2">Configurar Acesso ao Portal</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <input
-                        required
-                        type="email"
-                        className="w-full bg-white border border-slate-100 rounded-xl px-4 py-3 outline-none focus:ring-4 ring-primary/10 font-bold text-brand-navy text-xs"
-                        placeholder="E-mail Institucional"
-                        value={formData.email}
-                        onChange={e => setFormData({ ...formData, email: e.target.value })}
-                      />
-                      <input
-                        required
-                        type="email"
-                        className="w-full bg-white border border-slate-100 rounded-xl px-4 py-3 outline-none focus:ring-4 ring-primary/10 font-bold text-brand-navy text-xs"
-                        placeholder="Confirmar E-mail"
-                        value={formData.confirmEmail}
-                        onChange={e => setFormData({ ...formData, confirmEmail: e.target.value })}
-                      />
-                      <input
-                        required
-                        type="password"
-                        className="w-full bg-white border border-slate-100 rounded-xl px-4 py-3 outline-none focus:ring-4 ring-primary/10 font-bold text-brand-navy text-xs"
-                        placeholder="Criar Senha"
-                        value={formData.password}
-                        onChange={e => setFormData({ ...formData, password: e.target.value })}
-                      />
-                      <input
-                        required
-                        type="password"
-                        className="w-full bg-white border border-slate-100 rounded-xl px-4 py-3 outline-none focus:ring-4 ring-primary/10 font-bold text-brand-navy text-xs"
-                        placeholder="Confirmar Senha"
-                        value={formData.confirmPassword}
-                        onChange={e => setFormData({ ...formData, confirmPassword: e.target.value })}
-                      />
-                    </div>
+                    <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-2">E-mail para Contato</h4>
+                    <input
+                      required
+                      type="email"
+                      className="w-full bg-white border border-slate-100 rounded-xl px-4 py-3 outline-none focus:ring-4 ring-primary/10 font-bold text-brand-navy text-xs"
+                      placeholder="E-mail Institucional"
+                      value={formData.email}
+                      onChange={e => setFormData({ ...formData, email: e.target.value.toLowerCase() })}
+                    />
                   </div>
 
-                  {(formData.email !== formData.confirmEmail || formData.password !== formData.confirmPassword) && (
-                    <p className="text-red-500 text-[10px] font-bold text-center pt-2 uppercase tracking-wide">Os e-mails ou senhas não conferem.</p>
-                  )}
                   <div className="flex gap-4 pt-4">
                     <button type="button" onClick={handleBack} className="flex-1 bg-slate-100 text-brand-navy py-5 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-colors">Voltar</button>
-                    <button type="button" onClick={handleNext} disabled={!formData.socialName || !formData.cnpj || !formData.email || !formData.password || formData.email !== formData.confirmEmail || formData.password !== formData.confirmPassword} className="flex-1 btn-startpro text-white py-5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl disabled:opacity-30">Continuar</button>
+                    <button type="button" onClick={handleNext} disabled={!formData.socialName || !formData.cnpj || !formData.email} className="flex-1 btn-startpro text-white py-5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl disabled:opacity-30">Continuar</button>
                   </div>
                 </div>
               </div>
