@@ -25,8 +25,6 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks: {
             'vendor': ['react', 'react-dom', 'react-router-dom'],
-            'ui': ['lucide-react'],
-            'charts': ['recharts'],
             'pdf': ['jspdf', 'jspdf-autotable'],
             'utils': ['xlsx', '@supabase/supabase-js']
           }

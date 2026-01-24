@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { maskCurrency } from '../lib/masks';
 
@@ -66,7 +66,6 @@ const RegistrationFinalize: React.FC<RegistrationFinalizeProps> = ({ userData, o
   };
 
   if (success && finalData) {
-    const isInvestment = !!finalData.investmentPartner;
     // Robust name resolution: Check for name, ensure string, trim, check length. Fallback to generic.
     const rawName = finalData.selectedProvider?.name;
     const hasValidName = rawName && typeof rawName === 'string' && rawName.trim().length > 0;
