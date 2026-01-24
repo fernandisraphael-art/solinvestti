@@ -60,6 +60,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onReset
 }) => {
   const { error, refreshData } = useSystem();
+
   const navigate = useNavigate();
   const manualUploadRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState('overview');
