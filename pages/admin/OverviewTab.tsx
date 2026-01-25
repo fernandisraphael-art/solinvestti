@@ -315,7 +315,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ generators, clients, concessi
                         {/* FUNIL REAL */}
                         <div className="bg-[#0c112b] border border-white/5 rounded-2xl overflow-hidden shadow-2xl group hover:border-white/10 transition-all">
                             <div className="bg-[#1e293b]/20 px-5 py-3 border-b border-white/5">
-                                <h5 className="text-[10px] font-black text-white/40 uppercase tracking-widest">CONVOLUÇÃO DE LEADS</h5>
+                                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-brand-slate mb-6">CONVERSÃO DE LEADS</h4>
                             </div>
                             <div className="p-5 flex flex-col gap-3 min-h-[190px] justify-center">
                                 {funnelData.map((f, i) => (
