@@ -88,7 +88,7 @@ const LandingPage: React.FC = () => {
                   </div>
                   <h3 className="font-bold text-brand-navy mb-2">Conexão Digital</h3>
                   <p className="text-sm text-brand-slate leading-relaxed">
-                    A Solinvest conecta sua conta a uma usina solar remota.
+                    A Solinvestti conecta sua conta a uma usina solar remota.
                   </p>
                 </div>
 
