@@ -27,80 +27,119 @@ const LandingPage: React.FC = () => {
 
             {/* Header / Hero Content */}
             <div className="inline-flex items-center gap-3 px-5 py-2 rounded-full bg-primary/10 border border-primary/10 mb-8 mx-auto">
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Inteligência Financeira em Energia</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Economia Inteligente</span>
             </div>
 
-            <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-display font-extrabold leading-[0.9] tracking-tight text-brand-navy mb-8">
-              Energia que gera <br />
-              <span className="text-primary italic">patrimônio.</span>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-extrabold leading-[1.1] tracking-tight text-brand-navy mb-6">
+              Economize até 20% na conta de luz <span className="text-primary italic">sem instalar nada.</span>
             </h1>
 
-            <p className="text-lg sm:text-xl md:text-2xl text-brand-slate mb-12 max-w-2xl mx-auto leading-relaxed">
-              Transforme a economia gerada pelo seu consumo inteligente em ativos reais.
+            <p className="text-lg sm:text-xl md:text-2xl text-brand-slate mb-8 max-w-2xl mx-auto leading-relaxed">
+              Conectamos sua conta a usinas solares remotas e transformamos a economia em oportunidades financeiras.
             </p>
 
-            {/* Integrated Who We Are Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 text-left mb-12">
-              {/* Card 1 */}
-              <div className="group p-8 rounded-3xl bg-white border border-slate-100 hover:border-slate-200 transition-all duration-500 hover:shadow-xl hover:shadow-slate-200/50 hover:-translate-y-1">
-                <div className="w-12 h-12 rounded-xl bg-brand-navy/5 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
-                  <span className="material-symbols-outlined text-2xl text-brand-navy">solar_power</span>
-                </div>
-                <h3 className="text-lg font-bold text-brand-navy mb-3">Sem Obras</h3>
-                <p className="text-brand-slate leading-relaxed text-sm">
-                  Conectamos sua conta a usinas remotas. Sem painéis no telhado.
-                </p>
+            {/* Key Benefits List */}
+            <div className="flex flex-wrap justify-center gap-4 md:gap-8 mb-12 text-sm font-bold text-brand-navy">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-green-500">check_circle</span>
+                Sem obras
               </div>
-
-              {/* Card 2 */}
-              <div className="group p-8 rounded-3xl bg-white border border-slate-100 hover:border-slate-200 transition-all duration-500 hover:shadow-xl hover:shadow-slate-200/50 hover:-translate-y-1">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
-                  <span className="material-symbols-outlined text-2xl text-primary">trending_down</span>
-                </div>
-                <h3 className="text-lg font-bold text-brand-navy mb-3">Desconto Garantido</h3>
-                <p className="text-brand-slate leading-relaxed text-sm">
-                  Até 20% de redução na conta de luz todos os meses.
-                </p>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-green-500">check_circle</span>
+                100% legal (Geração Distribuída – ANEEL)
               </div>
-
-              {/* Card 3 */}
-              <div className="group p-8 rounded-3xl bg-white border border-slate-100 hover:border-slate-200 transition-all duration-500 hover:shadow-xl hover:shadow-slate-200/50 hover:-translate-y-1">
-                <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
-                  <span className="material-symbols-outlined text-2xl text-green-600">savings</span>
-                </div>
-                <h3 className="text-lg font-bold text-brand-navy mb-3">Patrimônio</h3>
-                <p className="text-brand-slate leading-relaxed text-sm">
-                  Transformamos sua economia mensal em ativos reais.
-                </p>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-green-500">check_circle</span>
+                Sem investimento inicial
               </div>
             </div>
 
-            {/* CTA Buttons (Placed after explanations as requested) */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link to="/signup" className="btn-startpro px-10 py-5 text-white font-black rounded-full text-[11px] sm:text-[12px] uppercase tracking-widest flex items-center gap-3 w-full sm:w-auto text-center justify-center shadow-xl shadow-primary/20 hover:scale-105 transition-transform hover:shadow-2xl hover:shadow-primary/30">
-                Sou Residencial ou Empresa
-                <span className="material-symbols-outlined text-lg">person</span>
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
+              <Link to="/signup" className="btn-startpro group px-8 py-4 text-white rounded-full flex items-center gap-4 w-full sm:w-auto text-left justify-between shadow-xl shadow-primary/20 hover:scale-105 transition-all hover:shadow-2xl hover:shadow-primary/30">
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase tracking-widest opacity-80 font-bold">Residência ou Empresa</span>
+                  <span className="text-sm font-black">Começar a economizar</span>
+                </div>
+                <span className="material-symbols-outlined text-2xl group-hover:translate-x-1 transition-transform">arrow_forward</span>
               </Link>
 
-              <Link to="/generator-signup" className="px-10 py-5 bg-white text-brand-navy border border-slate-200 font-black rounded-full text-[11px] sm:text-[12px] uppercase tracking-widest flex items-center gap-3 w-full sm:w-auto text-center justify-center hover:bg-slate-50 hover:border-slate-300 transition-all hover:scale-105 hover:shadow-lg">
-                Sou uma Geradora
-                <span className="material-symbols-outlined text-lg">solar_power</span>
+              <Link to="/generator-signup" className="group px-8 py-4 bg-white text-brand-navy border border-slate-200 rounded-full flex items-center gap-4 w-full sm:w-auto text-left justify-between hover:bg-slate-50 hover:border-slate-300 transition-all hover:scale-105 hover:shadow-lg">
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase tracking-widest opacity-60 font-bold">Sou Geradora</span>
+                  <span className="text-sm font-black">Maximizar retorno</span>
+                </div>
+                <span className="material-symbols-outlined text-2xl group-hover:translate-x-1 transition-transform">bolt</span>
               </Link>
+            </div>
+
+            {/* How It Works Section */}
+            <div className="text-left mb-12">
+              <h2 className="text-2xl font-bold text-brand-navy mb-8 text-center">Como funciona na prática</h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 relative">
+                {/* Connecting Line (Desktop) */}
+                <div className="hidden md:block absolute top-12 left-[12%] right-[12%] h-0.5 bg-slate-200 -z-10"></div>
+
+                {/* Step 1 */}
+                <div className="flex flex-col items-center text-center group">
+                  <div className="w-24 h-24 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center justify-center mb-6 group-hover:-translate-y-2 transition-transform duration-300 z-10">
+                    <span className="material-symbols-outlined text-4xl text-primary">solar_power</span>
+                  </div>
+                  <h3 className="font-bold text-brand-navy mb-2">Conexão Digital</h3>
+                  <p className="text-sm text-brand-slate leading-relaxed">
+                    A Solinvest conecta sua conta a uma usina solar remota.
+                  </p>
+                </div>
+
+                {/* Step 2 */}
+                <div className="flex flex-col items-center text-center group">
+                  <div className="w-24 h-24 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center justify-center mb-6 group-hover:-translate-y-2 transition-transform duration-300 z-10">
+                    <span className="material-symbols-outlined text-4xl text-brand-navy">receipt_long</span>
+                  </div>
+                  <h3 className="font-bold text-brand-navy mb-2">Créditos na Fatura</h3>
+                  <p className="text-sm text-brand-slate leading-relaxed">
+                    Você recebe créditos de energia direto na sua conta de luz.
+                  </p>
+                </div>
+
+                {/* Step 3 */}
+                <div className="flex flex-col items-center text-center group">
+                  <div className="w-24 h-24 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center justify-center mb-6 group-hover:-translate-y-2 transition-transform duration-300 z-10">
+                    <span className="material-symbols-outlined text-4xl text-green-500">trending_down</span>
+                  </div>
+                  <h3 className="font-bold text-brand-navy mb-2">Redução Garantida</h3>
+                  <p className="text-sm text-brand-slate leading-relaxed">
+                    Sua conta reduz mensalmente, garantindo economia imediata.
+                  </p>
+                </div>
+
+                {/* Step 4 */}
+                <div className="flex flex-col items-center text-center group">
+                  <div className="w-24 h-24 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center justify-center mb-6 group-hover:-translate-y-2 transition-transform duration-300 z-10">
+                    <span className="material-symbols-outlined text-4xl text-amber-500">account_balance_wallet</span>
+                  </div>
+                  <h3 className="font-bold text-brand-navy mb-2">Patrimônio</h3>
+                  <p className="text-sm text-brand-slate leading-relaxed">
+                    A economia pode ser direcionada para ativos financeiros.
+                  </p>
+                </div>
+              </div>
             </div>
 
           </div>
         </div>
       </section>
 
-      <section className="py-32 bg-brand-navy relative overflow-hidden text-center px-6">
+      <section className="py-24 bg-brand-navy relative overflow-hidden text-center px-6">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
         <div className="max-w-7xl mx-auto relative z-10">
           <h2 className="text-primary font-black text-xl mb-8">"Energia é o meio. Finanças são o fim. Patrimônio é o resultado."</h2>
-          <h3 className="text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-display font-extrabold text-white mb-8 md:mb-12 max-w-4xl mx-auto leading-tight px-4">
+          <h3 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-display font-extrabold text-white mb-8 md:mb-12 max-w-4xl mx-auto leading-tight px-4">
             Pronto para transformar sua conta de luz em um ativo financeiro?
           </h3>
-          <Link to="/signup" className="btn-startpro inline-flex px-8 md:px-16 py-4 md:py-7 text-white font-black rounded-full text-sm md:text-lg uppercase tracking-widest shadow-2xl">
-            Simular Agora
+          <Link to="/signup" className="btn-startpro inline-flex px-8 md:px-16 py-4 md:py-6 text-white font-black rounded-full text-sm md:text-lg uppercase tracking-widest shadow-2xl hover:scale-105 transition-transform">
+            Simular Minha Economia
           </Link>
         </div>
       </section>
@@ -127,13 +166,17 @@ const LandingPage: React.FC = () => {
               <p className="text-brand-slate text-lg mb-8 leading-relaxed italic">
                 "Reduzi minha conta em quase 20% sem fazer absolutamente nada. Só me cadastrei e pronto. É genial."
               </p>
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center text-brand-navy font-bold text-lg">
+              <div className="flex items-center gap-4 border-t border-slate-50 pt-6">
+                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-brand-navy font-bold text-lg shrink-0">
                   RC
                 </div>
                 <div>
                   <div className="font-bold text-brand-navy">Ricardo Costa</div>
-                  <div className="text-xs text-brand-slate uppercase tracking-wider">Residencial</div>
+                  <div className="text-xs text-brand-slate">Campinas, SP</div>
+                  <div className="flex gap-3 mt-1">
+                    <span className="text-[10px] bg-green-50 text-green-600 px-2 py-0.5 rounded-full font-bold">R$ 450/mês</span>
+                    <span className="text-[10px] bg-brand-navy/5 text-brand-navy px-2 py-0.5 rounded-full font-bold">-18%</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -150,13 +193,17 @@ const LandingPage: React.FC = () => {
               <p className="text-brand-slate text-lg mb-8 leading-relaxed italic">
                 "Para meu escritório, a economia anual paga quase um mês de aluguel. E o melhor: sustentabilidade real."
               </p>
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center text-brand-navy font-bold text-lg">
+              <div className="flex items-center gap-4 border-t border-slate-50 pt-6">
+                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-brand-navy font-bold text-lg shrink-0">
                   AM
                 </div>
                 <div>
                   <div className="font-bold text-brand-navy">Amanda Martins</div>
-                  <div className="text-xs text-brand-slate uppercase tracking-wider">Empresarial</div>
+                  <div className="text-xs text-brand-slate">São Paulo, SP</div>
+                  <div className="flex gap-3 mt-1">
+                    <span className="text-[10px] bg-green-50 text-green-600 px-2 py-0.5 rounded-full font-bold">R$ 2.100/mês</span>
+                    <span className="text-[10px] bg-brand-navy/5 text-brand-navy px-2 py-0.5 rounded-full font-bold">-20%</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -173,16 +220,87 @@ const LandingPage: React.FC = () => {
               <p className="text-brand-slate text-lg mb-8 leading-relaxed italic">
                 "Não é só sobre economizar, é sobre ver seu dinheiro virar patrimônio. O conceito é revolucionário."
               </p>
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center text-brand-navy font-bold text-lg">
+              <div className="flex items-center gap-4 border-t border-slate-50 pt-6">
+                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-brand-navy font-bold text-lg shrink-0">
                   FL
                 </div>
                 <div>
                   <div className="font-bold text-brand-navy">Felipe Lima</div>
-                  <div className="text-xs text-brand-slate uppercase tracking-wider">Investidor</div>
+                  <div className="text-xs text-brand-slate">Belo Horizonte, MG</div>
+                  <div className="flex gap-3 mt-1">
+                    <span className="text-[10px] bg-green-50 text-green-600 px-2 py-0.5 rounded-full font-bold">Investidor</span>
+                    <span className="text-[10px] bg-brand-navy/5 text-brand-navy px-2 py-0.5 rounded-full font-bold">Dividendos</span>
+                  </div>
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="py-24 bg-white border-t border-slate-100">
+        <div className="max-w-4xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-display font-bold text-brand-navy mb-4">Dúvidas Frequentes</h2>
+            <p className="text-brand-slate">Entenda como a Solinvestti simplifica sua vida.</p>
+          </div>
+
+          <div className="space-y-4">
+            {/* FAQ Item 1 */}
+            <details className="group bg-slate-50 p-6 rounded-2xl cursor-pointer">
+              <summary className="flex justify-between items-center font-bold text-brand-navy list-none">
+                <span>Isso é legal?</span>
+                <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
+              </summary>
+              <div className="mt-4 text-brand-slate text-sm leading-relaxed">
+                Sim, 100% legal. Operamos sob a Lei 14.300/2022 que regulamenta a Geração Distribuída no Brasil. É um direito seu gerar sua própria energia ou aderir a um consórcio de energia solar.
+              </div>
+            </details>
+
+            {/* FAQ Item 2 */}
+            <details className="group bg-slate-50 p-6 rounded-2xl cursor-pointer">
+              <summary className="flex justify-between items-center font-bold text-brand-navy list-none">
+                <span>Preciso trocar de concessionária?</span>
+                <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
+              </summary>
+              <div className="mt-4 text-brand-slate text-sm leading-relaxed">
+                Não. A energia continua chegando pela rede da sua distribuidora local (ex: CPFL, Enel, Cemig) exatamente como hoje. A única mudança é que sua conta virá mais barata graças aos créditos solares que injetamos na rede para você.
+              </div>
+            </details>
+
+            {/* FAQ Item 3 */}
+            <details className="group bg-slate-50 p-6 rounded-2xl cursor-pointer">
+              <summary className="flex justify-between items-center font-bold text-brand-navy list-none">
+                <span>Tem fidelidade? Se eu quiser sair, consigo?</span>
+                <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
+              </summary>
+              <div className="mt-4 text-brand-slate text-sm leading-relaxed">
+                Acreditamos na liberdade. Nossos planos residenciais não possuem fidelidade. Você pode cancelar a qualquer momento, bastando um aviso prévio (geralmente 60 a 90 dias, dependendo da usina) para desconectarmos sua unidade.
+              </div>
+            </details>
+
+            {/* FAQ Item 4 */}
+            <details className="group bg-slate-50 p-6 rounded-2xl cursor-pointer">
+              <summary className="flex justify-between items-center font-bold text-brand-navy list-none">
+                <span>E se a economia não acontecer?</span>
+                <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
+              </summary>
+              <div className="mt-4 text-brand-slate text-sm leading-relaxed">
+                Você só paga pelo que economiza. O modelo é de "bônus" ou "desconto garantido". Se por algum motivo climático a usina não gerar créditos suficientes, você simplesmente paga sua conta normal para a concessionária, sem prejuízo. Mas garantimos contratualmente nossa performance.
+              </div>
+            </details>
+
+            {/* FAQ Item 5 */}
+            <details className="group bg-slate-50 p-6 rounded-2xl cursor-pointer">
+              <summary className="flex justify-between items-center font-bold text-brand-navy list-none">
+                <span>Funciona em apartamento?</span>
+                <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
+              </summary>
+              <div className="mt-4 text-brand-slate text-sm leading-relaxed">
+                Sim! Essa é a beleza da Geração Distribuída. Como a usina é remota, você pode morar em casa alugada, apartamento ou cobertura. Basta que a conta de luz esteja no seu CPF ou CNPJ.
+              </div>
+            </details>
           </div>
         </div>
       </section>
