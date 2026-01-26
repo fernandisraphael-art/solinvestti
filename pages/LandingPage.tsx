@@ -95,11 +95,11 @@ const LandingPage: React.FC = () => {
                 {/* Step 2 */}
                 <div className="flex flex-col items-center text-center group">
                   <div className="w-24 h-24 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center justify-center mb-6 group-hover:-translate-y-2 transition-transform duration-300 z-10">
-                    <span className="material-symbols-outlined text-4xl text-brand-navy">receipt_long</span>
+                    <span className="material-symbols-outlined text-4xl text-brand-navy">handshake</span>
                   </div>
-                  <h3 className="font-bold text-brand-navy mb-2">Créditos na Fatura</h3>
+                  <h3 className="font-bold text-brand-navy mb-2">Geradora</h3>
                   <p className="text-sm text-brand-slate leading-relaxed">
-                    Você recebe créditos de energia direto na sua conta de luz.
+                    Contrato direto com a geradora, 100% digital e sem burocracia.
                   </p>
                 </div>
 
@@ -110,7 +110,7 @@ const LandingPage: React.FC = () => {
                   </div>
                   <h3 className="font-bold text-brand-navy mb-2">Redução Garantida</h3>
                   <p className="text-sm text-brand-slate leading-relaxed">
-                    Sua conta reduz mensalmente, garantindo economia imediata.
+                    Sua conta reduzirá conforme o plano escolhido.
                   </p>
                 </div>
 
@@ -119,7 +119,7 @@ const LandingPage: React.FC = () => {
                   <div className="w-24 h-24 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center justify-center mb-6 group-hover:-translate-y-2 transition-transform duration-300 z-10">
                     <span className="material-symbols-outlined text-4xl text-amber-500">account_balance_wallet</span>
                   </div>
-                  <h3 className="font-bold text-brand-navy mb-2">Patrimônio</h3>
+                  <h3 className="font-bold text-brand-navy mb-2">Investimento</h3>
                   <p className="text-sm text-brand-slate leading-relaxed">
                     A economia pode ser direcionada para ativos financeiros.
                   </p>
@@ -261,44 +261,88 @@ const LandingPage: React.FC = () => {
             {/* FAQ Item 2 */}
             <details className="group bg-slate-50 p-6 rounded-2xl cursor-pointer">
               <summary className="flex justify-between items-center font-bold text-brand-navy list-none">
-                <span>Preciso trocar de concessionária?</span>
+                <span>Posso assinar na minha casa e na minha empresa?</span>
                 <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
               </summary>
               <div className="mt-4 text-brand-slate text-sm leading-relaxed">
-                Não. A energia continua chegando pela rede da sua distribuidora local (ex: CPFL, Enel, Cemig) exatamente como hoje. A única mudança é que sua conta virá mais barata graças aos créditos solares que injetamos na rede para você.
+                Sim! As assinaturas serão analisadas separadamente, mas você pode contratar nossos serviços tanto como Pessoa Física quanto como Pessoa Jurídica.
               </div>
             </details>
 
             {/* FAQ Item 3 */}
             <details className="group bg-slate-50 p-6 rounded-2xl cursor-pointer">
               <summary className="flex justify-between items-center font-bold text-brand-navy list-none">
-                <span>Tem fidelidade? Se eu quiser sair, consigo?</span>
+                <span>Preciso fazer alguma obra ou instalação de placas solares?</span>
                 <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
               </summary>
               <div className="mt-4 text-brand-slate text-sm leading-relaxed">
-                Acreditamos na liberdade. Nossos planos residenciais não possuem fidelidade. Você pode cancelar a qualquer momento, bastando um aviso prévio (geralmente 60 a 90 dias, dependendo da usina) para desconectarmos sua unidade.
+                Não. Ao assinar conosco, você não precisa se preocupar com obras, instalações ou manutenção. A usina parceira produz a energia e nós conectamos os créditos à sua conta.
               </div>
             </details>
 
             {/* FAQ Item 4 */}
             <details className="group bg-slate-50 p-6 rounded-2xl cursor-pointer">
               <summary className="flex justify-between items-center font-bold text-brand-navy list-none">
-                <span>E se a economia não acontecer?</span>
+                <span>A distribuidora (ex: CEMIG, CPFL) está de acordo com isso?</span>
                 <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
               </summary>
               <div className="mt-4 text-brand-slate text-sm leading-relaxed">
-                Você só paga pelo que economiza. O modelo é de "bônus" ou "desconto garantido". Se por algum motivo climático a usina não gerar créditos suficientes, você simplesmente paga sua conta normal para a concessionária, sem prejuízo. Mas garantimos contratualmente nossa performance.
+                Sim. Todas as distribuidoras atendem ao regramento estabelecido pela Agência Nacional de Energia Elétrica (ANEEL) que regulamentou a geração distribuída.
               </div>
             </details>
 
             {/* FAQ Item 5 */}
             <details className="group bg-slate-50 p-6 rounded-2xl cursor-pointer">
               <summary className="flex justify-between items-center font-bold text-brand-navy list-none">
-                <span>Funciona em apartamento?</span>
+                <span>Começo a economizar assim que assinar?</span>
                 <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
               </summary>
               <div className="mt-4 text-brand-slate text-sm leading-relaxed">
-                Sim! Essa é a beleza da Geração Distribuída. Como a usina é remota, você pode morar em casa alugada, apartamento ou cobertura. Basta que a conta de luz esteja no seu CPF ou CNPJ.
+                Após a assinatura, a distribuidora tem um prazo regulamentar (geralmente até 90 dias) para fazer a ativação dos créditos na sua conta. Durante esse período, você paga sua conta normalmente.
+              </div>
+            </details>
+
+            {/* FAQ Item 6 */}
+            <details className="group bg-slate-50 p-6 rounded-2xl cursor-pointer">
+              <summary className="flex justify-between items-center font-bold text-brand-navy list-none">
+                <span>Na falta de energia elétrica quem devo procurar?</span>
+                <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
+              </summary>
+              <div className="mt-4 text-brand-slate text-sm leading-relaxed">
+                A distribuidora local. Ela continua sendo responsável pela entrega da energia através dos fios e postes. Se faltar luz, é com ela que você deve falar.
+              </div>
+            </details>
+
+            {/* FAQ Item 7 */}
+            <details className="group bg-slate-50 p-6 rounded-2xl cursor-pointer">
+              <summary className="flex justify-between items-center font-bold text-brand-navy list-none">
+                <span>Tenho que pagar alguma coisa para virar cliente?</span>
+                <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
+              </summary>
+              <div className="mt-4 text-brand-slate text-sm leading-relaxed">
+                Não! Não há taxa de adesão, investimento ou mensalidade extra. Você paga apenas pela energia que consumir, mas com desconto garantido.
+              </div>
+            </details>
+
+            {/* FAQ Item 8 */}
+            <details className="group bg-slate-50 p-6 rounded-2xl cursor-pointer">
+              <summary className="flex justify-between items-center font-bold text-brand-navy list-none">
+                <span>Tem fidelidade? Se eu quiser sair, consigo?</span>
+                <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
+              </summary>
+              <div className="mt-4 text-brand-slate text-sm leading-relaxed">
+                Acreditamos na liberdade. Nossos planos residenciais não possuem fidelidade. Você pode cancelar a qualquer momento, bastando um aviso prévio para desconectarmos sua unidade.
+              </div>
+            </details>
+
+            {/* FAQ Item 9 */}
+            <details className="group bg-slate-50 p-6 rounded-2xl cursor-pointer">
+              <summary className="flex justify-between items-center font-bold text-brand-navy list-none">
+                <span>E se a economia não acontecer?</span>
+                <span className="material-symbols-outlined transition-transform group-open:rotate-180">expand_more</span>
+              </summary>
+              <div className="mt-4 text-brand-slate text-sm leading-relaxed">
+                Garantimos a economia em contrato. Se por algum motivo a usina gerar menos que o previsto, você simplesmente paga a diferença para a concessionária, sem prejuízo financeiro.
               </div>
             </details>
           </div>
@@ -324,7 +368,7 @@ const LandingPage: React.FC = () => {
             <div>
               <h5 className="font-bold text-brand-navy mb-6">Institucional</h5>
               <ul className="space-y-4 text-sm text-brand-slate font-medium">
-                <li><Link to="/about" className="hover:text-primary transition-colors">Quem Somos</Link></li>
+
                 <li><span className="text-slate-400">Termos de Uso</span></li>
               </ul>
             </div>

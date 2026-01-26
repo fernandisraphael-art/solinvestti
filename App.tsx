@@ -14,7 +14,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import AuthPage from './pages/AuthPage';
 import GeneratorSignup from './pages/GeneratorSignup';
 import ConsumerDashboard from './pages/ConsumerDashboard';
-import AboutPage from './pages/AboutPage';
+
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SystemProvider, useSystem } from './contexts/SystemContext';
 import { AdminService } from './lib/services/admin.service';
@@ -287,7 +287,7 @@ const App: React.FC = () => {
         <AdminControls />
         <Routes>
           <Route path="/" element={<LandingPage />} />
-          <Route path="/about" element={<AboutPage />} />
+
           <Route path="/admin-login" element={<AuthPage onLogin={handleLogin} fixedRole={UserRole.ADMIN} />} />
           <Route path="/auth" element={<AuthPage onLogin={handleLogin} />} />
           <Route path="/signup" element={<SignupFlow onComplete={updateUserData} />} />
