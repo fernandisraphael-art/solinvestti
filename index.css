@@ -41,3 +41,5 @@ body {
 .animate-bounce-subtle {
   animation: bounce-subtle 3s ease-in-out infinite;
 }
+
+.material-symbols-filled { font-variation-settings: 'FILL' 1; }

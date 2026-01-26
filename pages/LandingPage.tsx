@@ -157,11 +157,11 @@ const LandingPage: React.FC = () => {
             {/* Testimonial 1 */}
             <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center gap-1 text-amber-400 mb-6">
-                <span className="material-symbols-outlined text-lg fill-current">star</span>
-                <span className="material-symbols-outlined text-lg fill-current">star</span>
-                <span className="material-symbols-outlined text-lg fill-current">star</span>
-                <span className="material-symbols-outlined text-lg fill-current">star</span>
-                <span className="material-symbols-outlined text-lg fill-current">star</span>
+                <span className="material-symbols-outlined material-symbols-filled text-lg text-amber-400">star</span>
+                <span className="material-symbols-outlined material-symbols-filled text-lg text-amber-400">star</span>
+                <span className="material-symbols-outlined material-symbols-filled text-lg text-amber-400">star</span>
+                <span className="material-symbols-outlined material-symbols-filled text-lg text-amber-400">star</span>
+                <span className="material-symbols-outlined material-symbols-filled text-lg text-amber-400">star</span>
               </div>
               <p className="text-brand-slate text-lg mb-8 leading-relaxed italic">
                 "Reduzi minha conta em quase 20% sem fazer absolutamente nada. Só me cadastrei e pronto. É genial."
@@ -184,11 +184,11 @@ const LandingPage: React.FC = () => {
             {/* Testimonial 2 */}
             <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center gap-1 text-amber-400 mb-6">
-                <span className="material-symbols-outlined text-lg fill-current">star</span>
-                <span className="material-symbols-outlined text-lg fill-current">star</span>
-                <span className="material-symbols-outlined text-lg fill-current">star</span>
-                <span className="material-symbols-outlined text-lg fill-current">star</span>
-                <span className="material-symbols-outlined text-lg fill-current">star</span>
+                <span className="material-symbols-outlined material-symbols-filled text-lg text-amber-400">star</span>
+                <span className="material-symbols-outlined material-symbols-filled text-lg text-amber-400">star</span>
+                <span className="material-symbols-outlined material-symbols-filled text-lg text-amber-400">star</span>
+                <span className="material-symbols-outlined material-symbols-filled text-lg text-amber-400">star</span>
+                <span className="material-symbols-outlined material-symbols-filled text-lg text-amber-400">star</span>
               </div>
               <p className="text-brand-slate text-lg mb-8 leading-relaxed italic">
                 "Para meu escritório, a economia anual paga quase um mês de aluguel. E o melhor: sustentabilidade real."
@@ -211,11 +211,11 @@ const LandingPage: React.FC = () => {
             {/* Testimonial 3 */}
             <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
               <div className="flex items-center gap-1 text-amber-400 mb-6">
-                <span className="material-symbols-outlined text-lg fill-current">star</span>
-                <span className="material-symbols-outlined text-lg fill-current">star</span>
-                <span className="material-symbols-outlined text-lg fill-current">star</span>
-                <span className="material-symbols-outlined text-lg fill-current">star</span>
-                <span className="material-symbols-outlined text-lg fill-current">star</span>
+                <span className="material-symbols-outlined material-symbols-filled text-lg text-amber-400">star</span>
+                <span className="material-symbols-outlined material-symbols-filled text-lg text-amber-400">star</span>
+                <span className="material-symbols-outlined material-symbols-filled text-lg text-amber-400">star</span>
+                <span className="material-symbols-outlined material-symbols-filled text-lg text-amber-400">star</span>
+                <span className="material-symbols-outlined material-symbols-filled text-lg text-amber-400">star</span>
               </div>
               <p className="text-brand-slate text-lg mb-8 leading-relaxed italic">
                 "Não é só sobre economizar, é sobre ver seu dinheiro virar patrimônio. O conceito é revolucionário."
