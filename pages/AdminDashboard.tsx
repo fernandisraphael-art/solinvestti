@@ -312,17 +312,38 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const handleExportClientsExcel = () => {
     try {
-      const ws = XLSX.utils.json_to_sheet(clients.map(c => ({
+      const exportData = clients.map(c => ({
         Nome: c.name,
         Email: c.email,
         Telefone: c.phone || '-',
         Cidade: c.city || '-',
         Estado: c.state || '-',
+        Usina: c.generatorName || 'Não selecionada',
         Valor_Conta: c.bill_value || c.billValue || 0,
         Consumo_kWh: c.consumption || 0,
         Status: c.status === 'active' || c.status === 'approved' ? 'Aprovado' : c.status === 'pending_approval' ? 'Pendente' : 'Rejeitado',
         Link_Fatura: c.bill_url ? getBillUrl(c.bill_url) : 'Sem fatura'
-      })));
+      }));
+
+      // Calculate totals
+      const totalBill = clients.reduce((sum, c) => sum + (Number(c.bill_value || c.billValue) || 0), 0);
+      const totalConsumption = clients.reduce((sum, c) => sum + (Number(c.consumption) || 0), 0);
+
+      // Append total row
+      exportData.push({
+        Nome: 'TOTAL GERAL',
+        Email: '',
+        Telefone: '',
+        Cidade: '',
+        Estado: '',
+        Usina: '',
+        Valor_Conta: totalBill,
+        Consumo_kWh: totalConsumption,
+        Status: '',
+        Link_Fatura: ''
+      } as any);
+
+      const ws = XLSX.utils.json_to_sheet(exportData);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Clientes");
 
@@ -355,6 +376,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
       doc.setFontSize(10);
       doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, 14, 22);
 
+      // Calculate totals
+      const totalBill = clients.reduce((sum, c) => sum + (Number(c.bill_value || c.billValue) || 0), 0);
+      const totalConsumption = clients.reduce((sum, c) => sum + (Number(c.consumption) || 0), 0);
+
       autoTable(doc, {
         startY: 28,
         head: [[
@@ -362,6 +387,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           'Email',
           'Telefone',
           'Cidade/UF',
+          'Usina',
           'Valor Conta',
           'Consumo',
           'Status',
@@ -372,14 +398,32 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           c.email || '-',
           c.phone || '-',
           `${c.city || '-'}/${c.state || '-'}`,
+          c.generatorName || '-',
           `R$ ${Number(c.bill_value || c.billValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
           `${c.consumption || 0} kWh`,
           c.status === 'active' || c.status === 'approved' ? 'Aprovado' : c.status === 'pending_approval' ? 'Pendente' : 'Rejeitado',
           c.bill_url ? 'Sim' : 'Não'
         ]),
+        foot: [[
+          'TOTAL',
+          '',
+          '',
+          '',
+          '',
+          `R$ ${totalBill.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+          `${totalConsumption.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} kWh`,
+          '',
+          ''
+        ]],
         styles: { fontSize: 8, cellPadding: 2 },
         headStyles: {
           fillColor: [16, 185, 129],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          halign: 'center'
+        },
+        footStyles: {
+          fillColor: [15, 23, 42], // Brand Navy
           textColor: [255, 255, 255],
           fontStyle: 'bold',
           halign: 'center'
