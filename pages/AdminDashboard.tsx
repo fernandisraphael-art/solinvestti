@@ -303,6 +303,107 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
+  const getBillUrl = (path: string) => {
+    if (!path) return '';
+    if (path.startsWith('http') || path.startsWith('data:')) return path;
+    const { data } = supabase.storage.from('documents').getPublicUrl(path);
+    return data.publicUrl;
+  };
+
+  const handleExportClientsExcel = () => {
+    try {
+      const ws = XLSX.utils.json_to_sheet(clients.map(c => ({
+        Nome: c.name,
+        Email: c.email,
+        Telefone: c.phone || '-',
+        Cidade: c.city || '-',
+        Estado: c.state || '-',
+        Valor_Conta: c.bill_value || c.billValue || 0,
+        Consumo_kWh: c.consumption || 0,
+        Status: c.status === 'active' || c.status === 'approved' ? 'Aprovado' : c.status === 'pending_approval' ? 'Pendente' : 'Rejeitado',
+        Link_Fatura: c.bill_url ? getBillUrl(c.bill_url) : 'Sem fatura'
+      })));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Clientes");
+
+      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Solinvestti_Clientes_${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      triggerToast('Excel de Clientes exportado com sucesso!');
+    } catch (error) {
+      console.error('Client Excel Export Error:', error);
+      triggerToast('Erro ao exportar Excel de clientes.', 'error');
+    }
+  };
+
+  const handleExportClientsPDF = () => {
+    try {
+      const doc = new jsPDF('landscape');
+
+      doc.setFontSize(16);
+      doc.text("Relatório de Clientes - Solinvestti", 14, 15);
+
+      doc.setFontSize(10);
+      doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, 14, 22);
+
+      autoTable(doc, {
+        startY: 28,
+        head: [[
+          'Nome',
+          'Email',
+          'Telefone',
+          'Cidade/UF',
+          'Valor Conta',
+          'Consumo',
+          'Status',
+          'Fatura'
+        ]],
+        body: clients.map(c => [
+          c.name || '-',
+          c.email || '-',
+          c.phone || '-',
+          `${c.city || '-'}/${c.state || '-'}`,
+          `R$ ${Number(c.bill_value || c.billValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+          `${c.consumption || 0} kWh`,
+          c.status === 'active' || c.status === 'approved' ? 'Aprovado' : c.status === 'pending_approval' ? 'Pendente' : 'Rejeitado',
+          c.bill_url ? 'Sim' : 'Não'
+        ]),
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: {
+          fillColor: [16, 185, 129],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          halign: 'center'
+        },
+        alternateRowStyles: { fillColor: [245, 247, 250] },
+      });
+
+      const pdfBlob = doc.output('blob');
+      const url = window.URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Solinvestti_Relatorio_Clientes_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      triggerToast('PDF de Clientes exportado com sucesso!');
+    } catch (error: any) {
+      console.error('Client PDF Export Error:', error);
+      triggerToast(`Erro ao exportar PDF: ${error.message}`, 'error');
+    }
+  };
+
   const handleManualUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -449,6 +550,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               onApproveClient={onApproveClient}
               onUpdateClient={onUpdateClient}
               onActivateAll={onActivateAllClients}
+              onExportExcel={handleExportClientsExcel}
+              onExportPDF={handleExportClientsPDF}
             />
           )}
         </div>

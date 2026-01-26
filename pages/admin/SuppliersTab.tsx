@@ -95,7 +95,7 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({
     const pendingCount = generators.filter(g => g.status === 'pending').length;
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 bg-[#020617] p-3 rounded-2xl border border-white/5 max-h-screen overflow-y-auto no-scrollbar">
+        <div className="space-y-6 animate-in fade-in duration-500 bg-[#020617] p-3 rounded-2xl border border-white/5">
 
             <div className="flex items-center gap-3">
                 <button onClick={onProspect} className="px-5 py-2.5 bg-primary text-brand-navy rounded-xl font-black text-[9px] uppercase tracking-widest shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:scale-105 transition-all">
@@ -240,7 +240,7 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({
                                 </div>
 
                                 {/* Actions Footer */}
-                                <div className="flex items-center justify-between pt-2 border-t border-white/5 mt-1">
+                                <div className="flex items-center justify-between pt-2 border-t border-white/5 mt-1 relative z-10">
                                     <div className="flex gap-3">
                                         <button
                                             onClick={() => onToggleStatus(gen.id!, gen.status!)}
