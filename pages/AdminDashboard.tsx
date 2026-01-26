@@ -177,19 +177,82 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
+  // Proporção de Geração: 1 MWp (Instalado) gera aprox. 125.000 kWh/mês (Média Brasil)
+  const KWH_PER_MW = 125000;
+
+  const getCapacityStats = (gen: EnergyProvider) => {
+    // Capacidade da Usina já está em MW (Input do Admin)
+    const totalMW = typeof gen.capacity === 'number'
+      ? gen.capacity
+      : parseFloat(String(gen.capacity || '0').replace(/\./g, '').replace(',', '.'));
+
+    const relevantClients = clients.filter(c =>
+      (c.supplier_id === gen.id || c.supplierId === gen.id || c.provider_id === gen.id) &&
+      (c.status === 'approved' || c.status === 'active')
+    );
+
+    const stats = relevantClients.reduce((acc, c) => {
+      // 1. Pega consumo em kWh (ou estima pelo valor da conta)
+      const billVal = Number(c.billValue || c.bill_value || 0);
+      const consumptionKWh = Number(c.consumption) || (billVal / 0.85);
+
+      // 2. Converte kWh do cliente para MW equivalentes da usina
+      const equivalentMW = consumptionKWh / KWH_PER_MW;
+
+      acc.usedMW += (equivalentMW || 0);
+      acc.totalBill += billVal;
+
+      return acc;
+    }, { usedMW: 0, totalBill: 0 });
+
+    const commissionPercentage = Number(gen.commission || 0) / 100;
+    const totalCommission = stats.totalBill * commissionPercentage;
+
+    return {
+      clientCount: relevantClients.length,
+      totalCommission
+    };
+  };
+
   const handleExportExcel = () => {
     try {
-      const ws = XLSX.utils.json_to_sheet(generators.map(g => ({
-        Nome: g.name,
-        Tipo: g.type,
-        Região: g.region,
-        Cidade: g.city,
-        Capacidade_MW: g.capacity,
-        Status: g.status,
-        Desconto: `${g.discount}%`,
-        Responsável: g.responsibleName,
-        Telefone: g.responsiblePhone
-      })));
+      const exportData = generators.map(g => {
+        const { clientCount, totalCommission } = getCapacityStats(g);
+        return {
+          Nome: g.name,
+          Tipo: g.type,
+          Região: g.region,
+          Cidade: g.city,
+          Capacidade_MW: g.capacity,
+          Status: g.status,
+          Desconto: `${g.discount}%`,
+          Responsável: g.responsibleName,
+          Telefone: g.responsiblePhone,
+          Clientes_Ativos: clientCount,
+          Comissao_R$: totalCommission
+        };
+      });
+
+      // Calculate totals
+      const totalCommissionAll = exportData.reduce((sum, item) => sum + (Number(item['Comissao_R$']) || 0), 0);
+      const totalClientsAll = exportData.reduce((sum, item) => sum + (Number(item['Clientes_Ativos']) || 0), 0);
+
+      // Append total row
+      exportData.push({
+        Nome: 'TOTAL GERAL',
+        Tipo: '',
+        Região: '',
+        Cidade: '',
+        Capacidade_MW: '',
+        Status: '',
+        Desconto: '',
+        Responsável: '',
+        Telefone: '',
+        Clientes_Ativos: totalClientsAll,
+        Comissao_R$: totalCommissionAll
+      } as any);
+
+      const ws = XLSX.utils.json_to_sheet(exportData);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Geradores");
 
@@ -224,24 +287,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
       doc.setFontSize(10);
       doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, 14, 22);
 
-      autoTable(doc, {
-        startY: 28,
-        head: [[
-          'Nome',
-          'Tipo',
-          'Local',
-          'Capacidade\n(MW)',
-          'Status',
-          'Desconto\n(%)',
-          'Comissão\n(%)',
-          'Rating',
-          'Empresa',
-          'Responsável',
-          'Telefone',
-          'Email',
-          'Receita Anual\n(R$)'
-        ]],
-        body: generators.map(g => [
+      // Prepare data and calculate totals
+      let totalCommissionAll = 0;
+      let totalClientsAll = 0;
+
+      const bodyData = generators.map(g => {
+        const { clientCount, totalCommission } = getCapacityStats(g);
+        totalCommissionAll += totalCommission;
+        totalClientsAll += clientCount;
+
+        return [
           g.name || '-',
           g.type || '-',
           `${g.city || '-'} / ${g.region || '-'}`,
@@ -249,19 +304,57 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           g.status === 'active' ? 'Ativo' : g.status === 'cancelled' ? 'Cancelado' : 'Pendente',
           g.discount ? `${g.discount}%` : '-',
           g.commission ? `${g.commission}%` : '-',
-          g.rating ? `${g.rating}/5` : '-',
-          g.company || '-',
+          clientCount.toString(),
+          `R$ ${totalCommission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
           g.responsibleName || '-',
           g.responsiblePhone || '-',
-          g.accessEmail || '-',
-          g.annualRevenue ? `R$ ${Number(g.annualRevenue).toLocaleString('pt-BR')}` : '-'
-        ]),
+          g.accessEmail || '-'
+        ];
+      });
+
+      autoTable(doc, {
+        startY: 28,
+        head: [[
+          'Nome',
+          'Tipo',
+          'Local',
+          'Capacidade',
+          'Status',
+          'Desconto',
+          'Comissão',
+          'Clientes',
+          'V. Comissão',
+          'Responsável',
+          'Telefone',
+          'Email'
+        ]],
+        body: bodyData,
+        foot: [[
+          'TOTAL',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          totalClientsAll.toString(),
+          `R$ ${totalCommissionAll.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+          '',
+          '',
+          ''
+        ]],
         styles: {
-          fontSize: 8,
-          cellPadding: 2,
+          fontSize: 7, // Smaller font to fit more columns
+          cellPadding: 1.5,
         },
         headStyles: {
           fillColor: [16, 185, 129], // Primary color
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          halign: 'center'
+        },
+        footStyles: {
+          fillColor: [15, 23, 42],
           textColor: [255, 255, 255],
           fontStyle: 'bold',
           halign: 'center'
@@ -270,19 +363,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           fillColor: [245, 247, 250]
         },
         columnStyles: {
-          0: { cellWidth: 30 }, // Nome
-          1: { cellWidth: 15 }, // Tipo
-          2: { cellWidth: 30 }, // Local
+          0: { cellWidth: 25 }, // Nome
+          1: { cellWidth: 12 }, // Tipo
+          2: { cellWidth: 25 }, // Local
           3: { cellWidth: 15, halign: 'center' }, // Capacidade
-          4: { cellWidth: 18, halign: 'center' }, // Status
-          5: { cellWidth: 15, halign: 'center' }, // Desconto
-          6: { cellWidth: 15, halign: 'center' }, // Comissão
-          7: { cellWidth: 12, halign: 'center' }, // Rating
-          8: { cellWidth: 25 }, // Empresa
-          9: { cellWidth: 25 }, // Responsável
+          4: { cellWidth: 15, halign: 'center' }, // Status
+          5: { cellWidth: 12, halign: 'center' }, // Desconto
+          6: { cellWidth: 12, halign: 'center' }, // Comissão
+          7: { cellWidth: 12, halign: 'center' }, // Clientes (New)
+          8: { cellWidth: 20, halign: 'right' },  // V. Comissão (New)
+          9: { cellWidth: 20 }, // Responsável
           10: { cellWidth: 20 }, // Telefone
-          11: { cellWidth: 30 }, // Email
-          12: { cellWidth: 20, halign: 'right' } // Receita
+          11: { cellWidth: 35 }, // Email
         }
       });
 
