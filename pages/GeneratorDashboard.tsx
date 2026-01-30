@@ -7,6 +7,7 @@ import Header from '../components/Header';
 import { supabase } from '../lib/supabase';
 import { LOGO_URL } from '../constants/assets';
 import { normalizeText } from '../lib/masks';
+import { useAuth } from '../contexts/AuthContext';
 
 interface GeneratorDashboardProps {
   generatorData: {
@@ -28,13 +29,12 @@ interface GeneratorDashboardProps {
 
 const GeneratorDashboard: React.FC<GeneratorDashboardProps> = ({ generatorData, onUpdate, clients, negotiations }) => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState(() => sessionStorage.getItem('generatorActiveTab') || 'profile');
+  const { setUser } = useAuth();
+  // Always start on 'profile' (Dados da Planta) tab when entering the dashboard
+  const [activeTab, setActiveTab] = useState('profile');
   const [showToast, setShowToast] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  React.useEffect(() => {
-    sessionStorage.setItem('generatorActiveTab', activeTab);
-  }, [activeTab]);
   // Enhanced initialization: Check localStorage first, then props
   const [logoUrl, setLogoUrl] = useState<string | null>(() => {
     return localStorage.getItem('cachedLogoUrl') || generatorData.logoUrl || null;
@@ -159,50 +159,26 @@ const GeneratorDashboard: React.FC<GeneratorDashboardProps> = ({ generatorData, 
 
   const handleSaveProfile = async () => {
     setIsSaving(true);
+
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      // Use onUpdate prop which already handles REST API updates correctly via App.tsx
+      await onUpdate({
+        socialName: profileForm.socialName,
+        contactName: profileForm.contactName,
+        energyCapacity: profileForm.energyCapacity,
+        locationState: profileForm.locationState,
+        locationCity: profileForm.locationCity,
+        // Map to database field names for AdminService
+        name: profileForm.socialName,
+        responsible_name: profileForm.contactName,
+        capacity: profileForm.energyCapacity,
+        region: `${profileForm.locationCity} / ${profileForm.locationState}`
+      });
 
-      // Only try DB updates if we have a user
-      if (user) {
-        // 1. Update Generators Table
-        const updates: any = {};
-        if (profileForm.socialName) updates.name = profileForm.socialName;
-        if (profileForm.contactName) updates.responsible_name = profileForm.contactName;
-        if (profileForm.energyCapacity) updates.capacity = profileForm.energyCapacity;
-
-        // Construct region string (City / State)
-        if (profileForm.locationCity || profileForm.locationState) {
-          const city = profileForm.locationCity || generatorData.locationCity;
-          const state = profileForm.locationState || generatorData.locationState;
-          updates.region = `${city} / ${state}`;
-        }
-
-        if (Object.keys(updates).length > 0) {
-          await supabase.from('generators').update(updates).eq('user_id', user.id);
-        }
-
-        // 2. Update Auth (Email/Password)
-        const authUpdates: any = {};
-        if (profileForm.email) authUpdates.email = profileForm.email;
-        if (profileForm.password) authUpdates.password = profileForm.password;
-
-        if (Object.keys(authUpdates).length > 0) {
-          await supabase.auth.updateUser(authUpdates);
-        }
-      }
-    } catch (error: any) {
-      console.warn("Erro ao salvar no banco (continuando localmente):", error);
-      // We continue to update local state anyway so the UI feels responsive
+      console.log('[GeneratorDashboard] Profile saved successfully');
+    } catch (error) {
+      console.warn('[GeneratorDashboard] Save error (UI still updated):', error);
     }
-
-    // 3. Update Parent State (Always Success for UI)
-    onUpdate({
-      socialName: profileForm.socialName,
-      contactName: profileForm.contactName,
-      energyCapacity: profileForm.energyCapacity,
-      locationState: profileForm.locationState,
-      locationCity: profileForm.locationCity
-    });
 
     setShowToast(true);
     setTimeout(() => setShowToast(false), 3000);
@@ -372,7 +348,19 @@ const GeneratorDashboard: React.FC<GeneratorDashboardProps> = ({ generatorData, 
         onTabChange={setActiveTab}
         items={sidebarItems}
         onLogout={async () => {
-          await supabase.auth.signOut();
+          // Try to sign out but don't wait forever
+          try {
+            const signOutPromise = supabase.auth.signOut();
+            const timeoutPromise = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Timeout')), 2000)
+            );
+            await Promise.race([signOutPromise, timeoutPromise]);
+          } catch (e) {
+            console.warn('[GeneratorDashboard] Sign out error/timeout:', e);
+          }
+          // Clear AuthContext user state
+          setUser(null);
+          // Always navigate to home, even if signOut fails
           navigate('/');
         }}
         logoVariant="light"

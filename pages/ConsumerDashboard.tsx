@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import { jsPDF } from 'jspdf';
 import { LOGO_URL } from '../constants/assets';
 import { normalizeText } from '../lib/masks';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ConsumerDashboardProps {
   userData: any;
@@ -14,6 +15,7 @@ interface ConsumerDashboardProps {
 
 const ConsumerDashboard: React.FC<ConsumerDashboardProps> = ({ userData, onUpdateProfile }) => {
   const navigate = useNavigate();
+  const { setUser } = useAuth();
   const [showAdminArea, setShowAdminArea] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(userData.profileImage || null);
   const [isSaving, setIsSaving] = useState(false);
@@ -196,7 +198,19 @@ const ConsumerDashboard: React.FC<ConsumerDashboardProps> = ({ userData, onUpdat
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    // Try to sign out but don't wait forever
+    try {
+      const signOutPromise = supabase.auth.signOut();
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Timeout')), 2000)
+      );
+      await Promise.race([signOutPromise, timeoutPromise]);
+    } catch (e) {
+      console.warn('[ConsumerDashboard] Sign out error/timeout:', e);
+    }
+    // Clear AuthContext user state
+    setUser(null);
+    // Always navigate to home, even if signOut fails
     navigate('/');
   };
 

@@ -6,6 +6,7 @@ import { AuthService } from '../lib/services/auth.service';
 interface AuthContextType {
     user: { role: UserRole | null, name: string } | null;
     isLoading: boolean;
+    loading: boolean; // Alias for isLoading
     setUser: React.Dispatch<React.SetStateAction<{ role: UserRole | null, name: string } | null>>;
 }
 
@@ -25,18 +26,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             if (!isMountedRef.current) return;
 
+            // Set a timeout to ensure loading state completes even if SDK hangs
+            const timeout = setTimeout(() => {
+                console.warn('[AuthContext] Auth init timeout - setting loading to false');
+                if (isMountedRef.current) {
+                    setIsLoading(false);
+                }
+            }, 3000); // 3 second timeout
+
             try {
                 const session = await AuthService.getSession();
+                clearTimeout(timeout);
                 if (session && isMountedRef.current) {
                     const profile = await AuthService.fetchProfile(session.user.id);
                     setUser({ role: profile.role as UserRole, name: profile.name || 'Usuário' });
                 }
             } catch (err: any) {
+                clearTimeout(timeout);
                 // Silently ignore AbortError - it's a known SDK issue
                 if (err?.name !== 'AbortError' && !err?.message?.includes('AbortError')) {
                     console.error('Auth Init Error:', err);
                 }
             } finally {
+                clearTimeout(timeout);
                 if (isMountedRef.current) {
                     setIsLoading(false);
                 }
@@ -73,7 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     return (
-        <AuthContext.Provider value={{ user, isLoading, setUser }}>
+        <AuthContext.Provider value={{ user, isLoading, loading: isLoading, setUser }}>
             {children}
         </AuthContext.Provider>
     );

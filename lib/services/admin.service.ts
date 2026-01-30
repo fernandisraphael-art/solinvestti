@@ -2,6 +2,19 @@
 import { supabase } from '../supabase';
 import { UserRole, EnergyProvider, Concessionaire } from '../../types';
 
+// Log Supabase client status at module load
+console.log('[AdminService] Module loaded, supabase client:', supabase ? 'INITIALIZED' : 'NULL');
+
+// Helper to add timeout to promises
+function withTimeout<T>(promise: Promise<T>, ms: number, errorMsg: string): Promise<T> {
+    return Promise.race([
+        promise,
+        new Promise<T>((_, reject) =>
+            setTimeout(() => reject(new Error(errorMsg)), ms)
+        )
+    ]);
+}
+
 // Direct fetch helper for when SDK fails with AbortError
 async function directFetch<T>(table: string): Promise<T[]> {
     const url = import.meta.env.VITE_SUPABASE_URL;
@@ -27,18 +40,95 @@ async function directFetch<T>(table: string): Promise<T[]> {
     return response.json();
 }
 
+// Direct update helper for when SDK fails
+async function directUpdate(table: string, id: string, data: any): Promise<void> {
+    const url = import.meta.env.VITE_SUPABASE_URL;
+    const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    if (!url || !key) {
+        throw new Error('[directUpdate] Missing environment variables');
+    }
+
+    console.log(`[directUpdate] Updating ${table} id=${id}`, data);
+
+    const response = await fetch(`${url}/rest/v1/${table}?id=eq.${id}`, {
+        method: 'PATCH',
+        headers: {
+            'apikey': key,
+            'Authorization': `Bearer ${key}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
+
+    console.log(`[directUpdate] Success for ${table} id=${id}`);
+}
+
+// Direct delete helper for when SDK fails
+async function directDelete(table: string, id: string): Promise<void> {
+    const url = import.meta.env.VITE_SUPABASE_URL;
+    const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    if (!url || !key) {
+        throw new Error('[directDelete] Missing environment variables');
+    }
+
+    console.log(`[directDelete] Deleting from ${table} id=${id}`);
+
+    const response = await fetch(`${url}/rest/v1/${table}?id=eq.${id}`, {
+        method: 'DELETE',
+        headers: {
+            'apikey': key,
+            'Authorization': `Bearer ${key}`,
+            'Prefer': 'return=minimal'
+        }
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+    }
+
+    console.log(`[directDelete] Success for ${table} id=${id}`);
+}
+
 export const AdminService = {
     async fetchGenerators() {
         console.log('[AdminService.fetchGenerators] Starting fetch...');
 
-        // Try SDK first
+        // Use direct fetch first (more reliable)
+        try {
+            console.log('[AdminService.fetchGenerators] Using direct fetch...');
+            const data = await directFetch<any>('generators');
+            console.log('[AdminService.fetchGenerators] Direct fetch success, count:', data.length);
+            return data?.map((g: any) => ({
+                ...g,
+                responsibleName: g.responsible_name,
+                responsiblePhone: g.responsible_phone,
+                annualRevenue: g.annual_revenue,
+                estimatedSavings: g.estimated_savings,
+                accessEmail: g.access_email,
+                accessPassword: g.access_password
+            })) || [];
+        } catch (fetchErr: any) {
+            console.warn('[AdminService.fetchGenerators] Direct fetch failed:', fetchErr?.message);
+        }
+
+        // Fallback: Try SDK
         if (supabase) {
             try {
+                console.log('[AdminService.fetchGenerators] Trying SDK fallback...');
                 const { data, error } = await supabase.from('generators').select('*').order('name', { ascending: true });
 
                 if (!error && data) {
                     console.log('[AdminService.fetchGenerators] SDK success, count:', data.length);
-                    return data?.map(g => ({
+                    return data?.map((g: any) => ({
                         ...g,
                         responsibleName: g.responsible_name,
                         responsiblePhone: g.responsible_phone,
@@ -50,31 +140,15 @@ export const AdminService = {
                 }
 
                 if (error) {
-                    console.warn('[AdminService.fetchGenerators] SDK error, trying fallback:', error.message);
+                    console.error('[AdminService.fetchGenerators] SDK error:', error.message);
                 }
             } catch (err: any) {
-                console.warn('[AdminService.fetchGenerators] SDK exception, trying fallback:', err?.message);
+                console.error('[AdminService.fetchGenerators] SDK exception:', err?.message);
             }
         }
 
-        // Fallback: Direct fetch
-        console.log('[AdminService.fetchGenerators] Using direct fetch fallback...');
-        try {
-            const data = await directFetch<any>('generators');
-            console.log('[AdminService.fetchGenerators] Direct fetch success, count:', data.length);
-            return data?.map(g => ({
-                ...g,
-                responsibleName: g.responsible_name,
-                responsiblePhone: g.responsible_phone,
-                annualRevenue: g.annual_revenue,
-                estimatedSavings: g.estimated_savings,
-                accessEmail: g.access_email,
-                accessPassword: g.access_password
-            })) || [];
-        } catch (fetchErr) {
-            console.error('[AdminService.fetchGenerators] Direct fetch failed:', fetchErr);
-            return [];
-        }
+        console.error('[AdminService.fetchGenerators] All methods failed, returning empty array');
+        return [];
     },
 
     async batchAddGenerators(generators: EnergyProvider[]) {
@@ -108,72 +182,78 @@ export const AdminService = {
     async fetchConcessionaires() {
         console.log('[AdminService.fetchConcessionaires] Starting fetch...');
 
-        // Try SDK first
+        // Use direct fetch first (more reliable)
+        try {
+            console.log('[AdminService.fetchConcessionaires] Using direct fetch...');
+            const data = await directFetch<any>('concessionaires');
+            console.log('[AdminService.fetchConcessionaires] Direct fetch success, count:', data.length);
+            return data || [];
+        } catch (fetchErr: any) {
+            console.warn('[AdminService.fetchConcessionaires] Direct fetch failed:', fetchErr?.message);
+        }
+
+        // Fallback: Try SDK
         if (supabase) {
             try {
+                console.log('[AdminService.fetchConcessionaires] Trying SDK fallback...');
                 const { data, error } = await supabase.from('concessionaires').select('*');
                 if (!error && data) {
                     console.log('[AdminService.fetchConcessionaires] SDK success, count:', data.length);
                     return data;
                 }
                 if (error) {
-                    console.warn('[AdminService.fetchConcessionaires] SDK error, trying fallback:', error.message);
+                    console.error('[AdminService.fetchConcessionaires] SDK error:', error.message);
                 }
             } catch (err: any) {
-                console.warn('[AdminService.fetchConcessionaires] SDK exception, trying fallback:', err?.message);
+                console.error('[AdminService.fetchConcessionaires] SDK exception:', err?.message);
             }
         }
 
-        // Fallback: Direct fetch
-        console.log('[AdminService.fetchConcessionaires] Using direct fetch fallback...');
-        try {
-            const data = await directFetch<any>('concessionaires');
-            console.log('[AdminService.fetchConcessionaires] Direct fetch success, count:', data.length);
-            return data || [];
-        } catch (fetchErr) {
-            console.error('[AdminService.fetchConcessionaires] Direct fetch failed:', fetchErr);
-            return [];
-        }
+        console.error('[AdminService.fetchConcessionaires] All methods failed');
+        return [];
     },
 
     async fetchClients() {
         console.log('[AdminService.fetchClients] Starting fetch...');
 
-        // Try SDK first
+        // Use direct fetch first (more reliable)
+        try {
+            console.log('[AdminService.fetchClients] Using direct fetch...');
+            const data = await directFetch<any>('clients');
+            console.log('[AdminService.fetchClients] Direct fetch success, count:', data.length);
+            return data?.map((c: any) => ({
+                ...c,
+                generatorName: 'Não selecionada' // Join not available in simple fetch
+            })) || [];
+        } catch (fetchErr: any) {
+            console.warn('[AdminService.fetchClients] Direct fetch failed:', fetchErr?.message);
+        }
+
+        // Fallback: Try SDK
         if (supabase) {
             try {
+                console.log('[AdminService.fetchClients] Trying SDK fallback...');
                 const { data, error } = await supabase
                     .from('clients')
                     .select('*, generators(name)');
 
                 if (!error && data) {
                     console.log('[AdminService.fetchClients] SDK success, count:', data.length);
-                    return data?.map(c => ({
+                    return data?.map((c: any) => ({
                         ...c,
-                        generatorName: (c as any).generators?.name || 'Não selecionada'
+                        generatorName: c.generators?.name || 'Não selecionada'
                     })) || [];
                 }
                 if (error) {
-                    console.warn('[AdminService.fetchClients] SDK error, trying fallback:', error.message);
+                    console.error('[AdminService.fetchClients] SDK error:', error.message);
                 }
             } catch (err: any) {
-                console.warn('[AdminService.fetchClients] SDK exception, trying fallback:', err?.message);
+                console.error('[AdminService.fetchClients] SDK exception:', err?.message);
             }
         }
 
-        // Fallback: Direct fetch (without join)
-        console.log('[AdminService.fetchClients] Using direct fetch fallback...');
-        try {
-            const data = await directFetch<any>('clients');
-            console.log('[AdminService.fetchClients] Direct fetch success, count:', data.length);
-            return data?.map(c => ({
-                ...c,
-                generatorName: 'Não selecionada' // Join not available in simple fetch
-            })) || [];
-        } catch (fetchErr) {
-            console.error('[AdminService.fetchClients] Direct fetch failed:', fetchErr);
-            return [];
-        }
+        console.error('[AdminService.fetchClients] All methods failed');
+        return [];
     },
 
     async addGenerator(gen: any) {
@@ -204,6 +284,8 @@ export const AdminService = {
     },
 
     async updateGenerator(id: string, updates: any) {
+        console.log('[AdminService.updateGenerator] Updating id:', id);
+
         const dbUpdates: any = {};
         if (updates.name !== undefined) dbUpdates.name = updates.name;
         if (updates.type !== undefined) dbUpdates.type = updates.type;
@@ -225,24 +307,89 @@ export const AdminService = {
         if (updates.landline !== undefined) dbUpdates.landline = updates.landline;
         if (updates.color !== undefined) dbUpdates.color = updates.color;
         if (updates.icon !== undefined) dbUpdates.icon = updates.icon;
+        if (updates.logoUrl !== undefined) dbUpdates.logo_url = updates.logoUrl;
 
-        const { error } = await supabase.from('generators').update(dbUpdates).eq('id', id);
-        if (error) throw error;
+        // Use direct update first (more reliable)
+        try {
+            await directUpdate('generators', id, dbUpdates);
+            console.log('[AdminService.updateGenerator] Direct update success');
+            return;
+        } catch (directErr: any) {
+            console.warn('[AdminService.updateGenerator] Direct update failed:', directErr?.message);
+        }
+
+        // Fallback: Try SDK
+        if (supabase) {
+            try {
+                console.log('[AdminService.updateGenerator] Trying SDK fallback...');
+                const { error } = await supabase.from('generators').update(dbUpdates).eq('id', id);
+                if (error) throw error;
+                console.log('[AdminService.updateGenerator] SDK success');
+                return;
+            } catch (sdkErr: any) {
+                console.error('[AdminService.updateGenerator] SDK failed:', sdkErr?.message);
+                throw sdkErr;
+            }
+        }
+
+        throw new Error('All update methods failed');
     },
 
     async deleteGenerator(id: string) {
-        const { error } = await supabase.from('generators').delete().eq('id', id);
-        if (error) throw error;
+        console.log('[AdminService.deleteGenerator] Deleting id:', id);
+
+        // Use direct delete first (more reliable)
+        try {
+            await directDelete('generators', id);
+            console.log('[AdminService.deleteGenerator] Direct delete success');
+            return;
+        } catch (directErr: any) {
+            console.warn('[AdminService.deleteGenerator] Direct delete failed:', directErr?.message);
+        }
+
+        // Fallback: Try SDK
+        if (supabase) {
+            const { error } = await supabase.from('generators').delete().eq('id', id);
+            if (error) throw error;
+        }
     },
 
     async updateClient(id: string, updates: any) {
-        const { error } = await supabase.from('clients').update(updates).eq('id', id);
-        if (error) throw error;
+        console.log('[AdminService.updateClient] Updating id:', id);
+
+        // Use direct update first (more reliable)
+        try {
+            await directUpdate('clients', id, updates);
+            console.log('[AdminService.updateClient] Direct update success');
+            return;
+        } catch (directErr: any) {
+            console.warn('[AdminService.updateClient] Direct update failed:', directErr?.message);
+        }
+
+        // Fallback: Try SDK
+        if (supabase) {
+            const { error } = await supabase.from('clients').update(updates).eq('id', id);
+            if (error) throw error;
+        }
     },
 
     async deleteClient(id: string) {
-        const { error } = await supabase.from('clients').delete().eq('id', id);
-        if (error) throw error;
+        console.log('[AdminService.deleteClient] Deleting id:', id);
+
+        // Use direct delete first (more reliable)
+        try {
+            await directDelete('clients', id);
+            console.log('[AdminService.deleteClient] Direct delete success');
+            return;
+        } catch (directErr: any) {
+            console.warn('[AdminService.deleteClient] Direct delete failed:', directErr?.message);
+        }
+
+        // Fallback: Try SDK
+        if (supabase) {
+            const { error } = await supabase.from('clients').delete().eq('id', id);
+            if (error) throw error;
+        }
     },
 
     async addConcessionaire(data: any) {

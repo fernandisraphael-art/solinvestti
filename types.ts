@@ -32,6 +32,7 @@ export interface EnergyProvider {
   city?: string;
   website?: string;
   annualRevenue?: number;
+  logoUrl?: string | null; // Logo da usina para exibição no marketplace
 }
 
 export interface Concessionaire {

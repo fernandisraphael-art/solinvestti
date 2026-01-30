@@ -5,6 +5,44 @@ import { UserRole } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
+// Helper to check generator credentials via REST API (bypasses SDK issues)
+async function checkGeneratorCredentials(email: string, password: string): Promise<{ name: string; id: string } | null> {
+  const url = import.meta.env.VITE_SUPABASE_URL;
+  const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+  if (!url || !key) return null;
+
+  try {
+    console.log('[AuthPage] Checking generator credentials via REST...');
+    const response = await fetch(
+      `${url}/rest/v1/generators?access_email=eq.${encodeURIComponent(email)}&access_password=eq.${encodeURIComponent(password)}&select=id,name`,
+      {
+        headers: {
+          'apikey': key,
+          'Authorization': `Bearer ${key}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (!response.ok) {
+      console.warn('[AuthPage] Generator credential check failed:', response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    console.log('[AuthPage] Generator check result:', data);
+
+    if (data && data.length > 0) {
+      return { name: data[0].name, id: data[0].id };
+    }
+    return null;
+  } catch (err) {
+    console.error('[AuthPage] Generator credential check error:', err);
+    return null;
+  }
+}
+
 interface AuthPageProps {
   onLogin: (role: UserRole, name: string) => void;
   fixedRole?: UserRole;
@@ -42,25 +80,30 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, fixedRole }) => {
           return;
         }
 
-        // Login Logic
+        // First, try to check if this is a generator login (via REST - more reliable)
+        if (activeRole === UserRole.GENERATOR) {
+          const generator = await checkGeneratorCredentials(formData.email, formData.password);
+          if (generator) {
+            console.log('[AuthPage] Generator login successful:', generator.name);
+            await onLogin(UserRole.GENERATOR, generator.name);
+            redirectUser(UserRole.GENERATOR);
+            return;
+          }
+        }
+
+        // Supabase Auth Login
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
           email: formData.email,
           password: formData.password,
         });
 
         if (authError) {
-          // Fallback: Check 'generators' table for migrated/imported users
-          console.log('Supabase auth failed, checking legacy tables...');
-          const { data: genUser, error: genError } = await supabase
-            .from('generators')
-            .select('*')
-            .eq('access_email', formData.email)
-            .eq('access_password', formData.password)
-            .maybeSingle();
-
-          if (genUser) {
-            console.log('Found user in generators table:', genUser.name);
-            await onLogin(UserRole.GENERATOR, genUser.name);
+          // Last fallback: Check generators table via REST for any role
+          console.log('[AuthPage] Supabase auth failed, trying generator fallback...');
+          const generator = await checkGeneratorCredentials(formData.email, formData.password);
+          if (generator) {
+            console.log('[AuthPage] Found generator via fallback:', generator.name);
+            await onLogin(UserRole.GENERATOR, generator.name);
             redirectUser(UserRole.GENERATOR);
             return;
           }
@@ -158,16 +201,43 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, fixedRole }) => {
     }
   };
 
-  const { user, loading } = useAuth();
+  const { user, loading, setUser } = useAuth();
+  const [showLoggedInPrompt, setShowLoggedInPrompt] = React.useState(false);
 
   React.useEffect(() => {
     if (!loading && user) {
-      // If user is already logged in with the requested role (or any role if no fixedRole), redirect
-      if (!fixedRole || user.role === fixedRole) {
-        redirectUser(user.role);
+      // Only show prompt if user role matches the page's fixedRole
+      // For admin page: only show if user is admin
+      // For regular auth page: only show if user is NOT admin (consumer/generator)
+      if (fixedRole) {
+        // Admin page - only show prompt for admins
+        if (user.role === fixedRole) {
+          setShowLoggedInPrompt(true);
+        }
+      } else {
+        // Regular auth page - show for consumers/generators (not admins)
+        if (user.role !== UserRole.ADMIN) {
+          setShowLoggedInPrompt(true);
+        }
       }
     }
   }, [user, loading, fixedRole]);
+
+  const handleLogout = async () => {
+    try {
+      // Try to sign out but don't wait forever
+      const signOutPromise = supabase.auth.signOut();
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Timeout')), 2000)
+      );
+      await Promise.race([signOutPromise, timeoutPromise]);
+    } catch (err) {
+      console.warn('[AuthPage] Logout error/timeout:', err);
+    }
+    // Always clear state, even if signOut fails
+    setUser(null);
+    setShowLoggedInPrompt(false);
+  };
 
   const redirectUser = (role: UserRole) => {
     if (role === UserRole.ADMIN) {
@@ -217,7 +287,34 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, fixedRole }) => {
           )}
         </div>
 
-        {showSuccess ? (
+        {/* Already logged in prompt */}
+        {showLoggedInPrompt && user ? (
+          <div className="text-center py-10 animate-in fade-in zoom-in duration-500">
+            <div className="size-20 bg-primary/10 text-primary rounded-full flex items-center justify-center mx-auto mb-8">
+              <span className="material-symbols-outlined text-4xl">account_circle</span>
+            </div>
+            <h2 className="text-2xl font-black text-brand-navy mb-4">Você já está conectado!</h2>
+            <p className="text-slate-500 text-sm font-medium leading-relaxed mb-6">
+              Logado como <span className="text-brand-navy font-bold">{user.name}</span>
+              <br />
+              <span className="text-xs text-slate-400">({user.role === 'admin' ? 'Administrador' : user.role === 'generator' ? 'Geradora' : 'Cliente'})</span>
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => redirectUser(user.role!)}
+                className="w-full bg-primary hover:bg-primary-hover py-5 rounded-2xl text-white font-black text-xs uppercase tracking-[0.25em] shadow-xl shadow-primary/20 transition-all"
+              >
+                Ir para o Painel
+              </button>
+              <button
+                onClick={handleLogout}
+                className="w-full bg-slate-100 hover:bg-slate-200 py-4 rounded-2xl text-slate-600 font-black text-xs uppercase tracking-[0.2em] transition-all"
+              >
+                Sair e trocar de conta
+              </button>
+            </div>
+          </div>
+        ) : showSuccess ? (
           <div className="text-center py-10 animate-in fade-in zoom-in duration-500">
             {/* ... Success Message block ... */}
             {/* Note: I am not replacing the success block in this replace call unless I have to. 

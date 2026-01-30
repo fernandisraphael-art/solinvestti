@@ -38,11 +38,16 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     const refreshData = async () => {
-        if (!isMountedRef.current) return;
+        console.log('[SystemContext] refreshData called...');
+        if (!isMountedRef.current) {
+            console.log('[SystemContext] Component not mounted, skipping.');
+            return;
+        }
         setIsLoading(true);
         setError(null);
 
         try {
+            console.log('[SystemContext] Starting data fetch...');
             // Fetch each data type independently to prevent one failure from breaking all
             let genData: any[] = [];
             let concData: any[] = [];
@@ -71,8 +76,13 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
             // Fetch with retry for each service
             genData = (await fetchWithRetry(() => AdminService.fetchGenerators())) || [];
+            console.log('[SystemContext] Generators fetched:', genData.length);
+
             concData = (await fetchWithRetry(() => AdminService.fetchConcessionaires())) || [];
+            console.log('[SystemContext] Concessionaires fetched:', concData.length);
+
             clientData = (await fetchWithRetry(() => AdminService.fetchClients())) || [];
+            console.log('[SystemContext] Clients fetched:', clientData.length);
 
             // Only update state if component is still mounted
             if (!isMountedRef.current) return;

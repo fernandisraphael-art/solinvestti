@@ -23,8 +23,12 @@ const ProviderCard: React.FC<ProviderCardProps> = ({ provider, index, currentBil
                         {index + 1}
                     </div>
 
-                    <div className={`size-20 rounded-2xl flex items-center justify-center font-display font-black text-2xl text-white shadow-xl bg-gradient-to-br ${provider.color}`}>
-                        {provider.name[0]}
+                    <div className={`size-20 rounded-2xl flex items-center justify-center font-display font-black text-2xl text-white shadow-xl overflow-hidden ${provider.logoUrl ? 'bg-white' : `bg-gradient-to-br ${provider.color}`}`}>
+                        {provider.logoUrl ? (
+                            <img src={provider.logoUrl} alt={provider.name} className="w-full h-full object-contain p-2" />
+                        ) : (
+                            provider.name[0]
+                        )}
                     </div>
 
                     <div>
