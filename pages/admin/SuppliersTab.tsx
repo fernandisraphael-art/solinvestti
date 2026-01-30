@@ -240,10 +240,10 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({
                                 </div>
 
                                 {/* Actions Footer */}
-                                <div className="flex items-center justify-between pt-2 border-t border-white/5 mt-1 relative z-10">
+                                <div className="flex items-center justify-between pt-2 border-t border-white/5 mt-1 relative z-20">
                                     <div className="flex gap-3">
                                         <button
-                                            onClick={() => onToggleStatus(gen.id!, gen.status!)}
+                                            onClick={(e) => { e.stopPropagation(); onToggleStatus(gen.id!, gen.status!); }}
                                             className={`text-[9px] font-bold uppercase tracking-wider hover:underline ${gen.status === 'active' ? 'text-amber-500' : 'text-emerald-500'}`}
                                         >
                                             {gen.status === 'active' ? 'Pausar' : 'Ativar'}
@@ -251,7 +251,7 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({
 
                                         {gen.status !== 'cancelled' && (
                                             <button
-                                                onClick={() => onUpdateGenerator(gen.id!, { status: 'cancelled' })}
+                                                onClick={(e) => { e.stopPropagation(); onUpdateGenerator(gen.id!, { status: 'cancelled' }); }}
                                                 className="text-[9px] font-bold uppercase tracking-wider hover:underline text-red-500 hover:text-red-400"
                                             >
                                                 Cancelar
@@ -259,17 +259,17 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({
                                         )}
                                     </div>
 
-                                    <div className="flex gap-1">
+                                    <div className="flex gap-1 relative z-50">
                                         <button
-                                            onClick={() => onEditGenerator(gen)}
-                                            className="size-6 rounded bg-white/5 hover:bg-blue-500/20 text-white/40 hover:text-blue-400 flex items-center justify-center transition-colors"
+                                            onClick={(e) => { e.stopPropagation(); onEditGenerator(gen); }}
+                                            className="size-6 rounded bg-white/5 hover:bg-blue-500/20 text-white/40 hover:text-blue-400 flex items-center justify-center transition-colors cursor-pointer"
                                             title="Editar"
                                         >
                                             <span className="material-symbols-outlined text-[14px]">edit</span>
                                         </button>
                                         <button
-                                            onClick={() => onDeleteGenerator(gen.id!)}
-                                            className="size-6 rounded bg-white/5 hover:bg-red-500/20 text-white/40 hover:text-red-400 flex items-center justify-center transition-colors"
+                                            onClick={(e) => { e.stopPropagation(); onDeleteGenerator(gen.id!); }}
+                                            className="size-6 rounded bg-white/5 hover:bg-red-500/20 text-white/40 hover:text-red-400 flex items-center justify-center transition-colors cursor-pointer"
                                             title="Excluir"
                                         >
                                             <span className="material-symbols-outlined text-[14px]">delete</span>

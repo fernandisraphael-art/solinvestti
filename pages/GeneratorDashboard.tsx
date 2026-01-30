@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Logo from '../components/Logo';
 import Sidebar from '../components/Sidebar';
@@ -21,6 +21,11 @@ interface GeneratorDashboardProps {
     commission: number;
     agreements: string;
     logoUrl?: string | null;
+    responsiblePhone?: string;
+    accessEmail?: string;
+    accessPassword?: string;
+    company?: string;
+    website?: string;
   };
   onUpdate: (data: any) => void;
   clients: any[];
@@ -36,29 +41,64 @@ const GeneratorDashboard: React.FC<GeneratorDashboardProps> = ({ generatorData, 
   const [isSaving, setIsSaving] = useState(false);
 
   // Enhanced initialization: Check localStorage first, then props
+  // SCOPED CACHE: Use socialName as part of key to prevent data leakage between different users
+  const cacheKey = `cachedLogoUrl_${generatorData.socialName?.replace(/\s+/g, '')}`;
+
   const [logoUrl, setLogoUrl] = useState<string | null>(() => {
-    return localStorage.getItem('cachedLogoUrl') || generatorData.logoUrl || null;
+    return localStorage.getItem(cacheKey) || generatorData.logoUrl || null;
   });
   const [showAdminArea, setShowAdminArea] = useState(false); // New state for modal
 
   React.useEffect(() => {
     // Sync props to local state if no local override exists
-    if (generatorData.logoUrl && !localStorage.getItem('cachedLogoUrl')) {
+    if (generatorData.logoUrl && !localStorage.getItem(cacheKey)) {
       setLogoUrl(generatorData.logoUrl);
     }
-  }, [generatorData.logoUrl]);
+  }, [generatorData.logoUrl, cacheKey]);
 
   // Local state for profile form
   const [profileForm, setProfileForm] = useState({
     socialName: generatorData.socialName,
     contactName: generatorData.contactName,
-    email: '',
-    password: '',
-    phone: '', // Need to map this if available in generatorData props or fetch it
+    company: generatorData.company || '',
+    website: generatorData.website || '',
+    email: generatorData.accessEmail || '',
+    password: generatorData.accessPassword || '',
+    phone: generatorData.responsiblePhone || '',
     energyCapacity: generatorData.energyCapacity,
     locationState: generatorData.locationState,
     locationCity: generatorData.locationCity,
   });
+
+  // Local state for strategy parameters
+  const [strategyForm, setStrategyForm] = useState({
+    agreements: generatorData.agreements || '',
+    discount: generatorData.discount || 0,
+    commission: generatorData.commission || 0
+  });
+
+  useEffect(() => {
+    setProfileForm(prev => ({
+      ...prev,
+      socialName: generatorData.socialName,
+      contactName: generatorData.contactName,
+      company: generatorData.company || '',
+      website: generatorData.website || '',
+      email: generatorData.accessEmail || '',
+      password: generatorData.accessPassword || '',
+      phone: generatorData.responsiblePhone || '',
+      energyCapacity: generatorData.energyCapacity,
+      locationState: generatorData.locationState,
+      locationCity: generatorData.locationCity
+    }));
+
+    setStrategyForm(prev => ({
+      ...prev,
+      agreements: generatorData.agreements || '',
+      discount: generatorData.discount || 0,
+      commission: generatorData.commission || 0
+    }));
+  }, [generatorData]);
 
   // Sync initial data or fetch specific generator extensions if needed
   // For now we assume generatorData is fresh. logic below will handle updates.
@@ -140,8 +180,9 @@ const GeneratorDashboard: React.FC<GeneratorDashboardProps> = ({ generatorData, 
       const dataUrl = await blobToDataUrl(resizedBlob);
 
       // Save to localStorage for persistence across reloads without DB
+      // Save to localStorage for persistence across reloads without DB
       try {
-        localStorage.setItem('cachedLogoUrl', dataUrl);
+        localStorage.setItem(cacheKey, dataUrl);
       } catch (e) {
         console.warn("Storage quota exceeded, logo will not persist after reload");
       }
@@ -170,7 +211,12 @@ const GeneratorDashboard: React.FC<GeneratorDashboardProps> = ({ generatorData, 
         locationCity: profileForm.locationCity,
         // Map to database field names for AdminService
         name: profileForm.socialName,
-        responsible_name: profileForm.contactName,
+        company: profileForm.company,
+        website: profileForm.website,
+        responsibleName: profileForm.contactName,
+        responsiblePhone: profileForm.phone,
+        accessEmail: profileForm.email,
+        accessPassword: profileForm.password,
         capacity: profileForm.energyCapacity,
         region: `${profileForm.locationCity} / ${profileForm.locationState}`
       });
@@ -183,8 +229,6 @@ const GeneratorDashboard: React.FC<GeneratorDashboardProps> = ({ generatorData, 
     setShowToast(true);
     setTimeout(() => setShowToast(false), 3000);
 
-    // Clear sensitive fields
-    setProfileForm(prev => ({ ...prev, password: '' }));
     setIsSaving(false);
   };
 
@@ -194,10 +238,25 @@ const GeneratorDashboard: React.FC<GeneratorDashboardProps> = ({ generatorData, 
   // Calculate simulated revenue based on clients
   const totalMonthlyRevenue = clients.reduce((acc, c) => acc + (Number(c.billValue) * 0.8), 0);
 
-  const handleUpdateParams = () => {
-    // Exibe o feedback de sucesso
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
+  const handleUpdateParams = async () => {
+    console.log('[GeneratorDashboard] handleUpdateParams called');
+    setIsSaving(true);
+    try {
+      console.log('[GeneratorDashboard] Calling onUpdate with:', strategyForm);
+      await onUpdate({
+        agreements: strategyForm.agreements,
+        discount: Number(strategyForm.discount),
+        commission: Number(strategyForm.commission)
+      });
+      console.log('[GeneratorDashboard] onUpdate success');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    } catch (error) {
+      console.error("Error saving strategy params:", error);
+      alert("Erro ao salvar parâmetros. Verifique o console.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const sidebarItems = [
@@ -234,7 +293,7 @@ const GeneratorDashboard: React.FC<GeneratorDashboardProps> = ({ generatorData, 
               </button>
             </header>
 
-            <div className="flex-1 overflow-y-auto p-10 space-y-10">
+            <div className="flex-1 overflow-y-auto p-10 space-y-10 custom-scrollbar">
               {/* Logo Upload Section */}
               <div className="flex flex-col items-center gap-6">
                 <div className="relative group size-40 mx-auto bg-white rounded-full shadow-premium flex items-center justify-center overflow-hidden p-4 border-4 border-slate-50">
@@ -255,7 +314,7 @@ const GeneratorDashboard: React.FC<GeneratorDashboardProps> = ({ generatorData, 
               {/* General Info */}
               <div className="space-y-6">
                 <div>
-                  <label className="block text-[10px] font-black text-brand-slate uppercase tracking-widest mb-3">Nome da Usina</label>
+                  <label className="block text-[10px] font-black text-brand-slate uppercase tracking-widest mb-3">Nome Fantasia (Comercial)</label>
                   <input
                     className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 outline-none focus:ring-4 ring-primary/5 font-bold text-brand-navy text-sm"
                     value={profileForm.socialName}
@@ -263,13 +322,67 @@ const GeneratorDashboard: React.FC<GeneratorDashboardProps> = ({ generatorData, 
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-brand-slate uppercase tracking-widest mb-3">Responsável Técnico</label>
+                  <label className="block text-[10px] font-black text-brand-slate uppercase tracking-widest mb-3">Razão Social</label>
                   <input
                     className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 outline-none focus:ring-4 ring-primary/5 font-bold text-brand-navy text-sm"
-                    value={profileForm.contactName}
-                    onChange={e => handleProfileChange('contactName', e.target.value)}
+                    value={profileForm.company}
+                    onChange={e => handleProfileChange('company', e.target.value)}
                   />
                 </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-black text-brand-slate uppercase tracking-widest mb-3">Responsável Técnico</label>
+                    <input
+                      className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 outline-none focus:ring-4 ring-primary/5 font-bold text-brand-navy text-sm"
+                      value={profileForm.contactName}
+                      onChange={e => handleProfileChange('contactName', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-brand-slate uppercase tracking-widest mb-3">Telefone / WhatsApp</label>
+                    <input
+                      className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 outline-none focus:ring-4 ring-primary/5 font-bold text-brand-navy text-sm"
+                      value={profileForm.phone}
+                      onChange={e => handleProfileChange('phone', e.target.value)} // Add mask logic if needed
+                      placeholder="(00) 00000-0000"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-brand-slate uppercase tracking-widest mb-3">Website / Portfolio</label>
+                  <input
+                    className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 outline-none focus:ring-4 ring-primary/5 font-bold text-brand-navy text-sm"
+                    value={profileForm.website}
+                    onChange={e => handleProfileChange('website', e.target.value)}
+                    placeholder="https://..."
+                  />
+                </div>
+
+                <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                  <h4 className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4">Dados de Acesso (Login)</h4>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-[10px] font-black text-brand-slate uppercase tracking-widest mb-3">E-mail de Acesso</label>
+                      <input
+                        className="w-full bg-white border border-slate-200 rounded-2xl px-6 py-4 outline-none focus:ring-4 ring-primary/5 font-bold text-brand-navy text-sm"
+                        value={profileForm.email}
+                        onChange={e => handleProfileChange('email', e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black text-brand-slate uppercase tracking-widest mb-3">Senha de Acesso</label>
+                      <input
+                        className="w-full bg-white border border-slate-200 rounded-2xl px-6 py-4 outline-none focus:ring-4 ring-primary/5 font-bold text-brand-navy text-sm"
+                        value={profileForm.password}
+                        onChange={e => handleProfileChange('password', e.target.value)}
+                        placeholder="Nova senha (deixe em branco para manter)"
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-[10px] font-black text-brand-slate uppercase tracking-widest mb-3">Capacidade Registrada (MW)</label>
                   <input
@@ -441,8 +554,8 @@ const GeneratorDashboard: React.FC<GeneratorDashboardProps> = ({ generatorData, 
                       <textarea
                         className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 outline-none focus:ring-4 ring-primary/10 font-bold text-brand-navy text-sm min-h-[120px]"
                         placeholder="Ex: Contrato de aluguel de cotas de usina solar com fidelidade de 12 meses..."
-                        value={generatorData.agreements}
-                        onChange={(e) => onUpdate({ agreements: e.target.value })}
+                        value={strategyForm.agreements}
+                        onChange={(e) => setStrategyForm({ ...strategyForm, agreements: e.target.value })}
                       />
                     </div>
                     <div>
@@ -451,27 +564,27 @@ const GeneratorDashboard: React.FC<GeneratorDashboardProps> = ({ generatorData, 
                         <input
                           type="range" min="0" max="35"
                           className="flex-1 h-2 bg-slate-100 rounded-full appearance-none cursor-pointer accent-primary"
-                          value={generatorData.discount}
-                          onChange={(e) => onUpdate({ discount: Number(e.target.value) })}
+                          value={strategyForm.discount}
+                          onChange={(e) => setStrategyForm({ ...strategyForm, discount: Number(e.target.value) })}
                         />
-                        <span className="text-2xl font-display font-black text-primary">{generatorData.discount}%</span>
+                        <span className="text-2xl font-display font-black text-primary">{strategyForm.discount}%</span>
                       </div>
                     </div>
                   </div>
 
                   <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 flex flex-col justify-between">
                     <div>
-                      <h4 className="text-[11px] font-black text-brand-navy uppercase tracking-[0.2em] mb-4">Taxa de Conexão SO INVEST</h4>
+                      <h4 className="text-[11px] font-black text-brand-navy uppercase tracking-[0.2em] mb-4">Taxa de Conexão SOLINVESTTI</h4>
                       <p className="text-xs text-brand-slate font-medium mb-8">Defina a comissão paga à plataforma para cada contrato fechado através do nosso hub de investimentos.</p>
 
                       <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
-                        <span className="text-xs font-black text-brand-navy uppercase tracking-widest">Comissão SO INVEST</span>
+                        <span className="text-xs font-black text-brand-navy uppercase tracking-widest">Comissão SOLINVESTTI</span>
                         <div className="flex items-center gap-3">
                           <input
                             type="number"
                             className="w-16 bg-slate-50 border-none text-center font-bold text-primary text-xl outline-none"
-                            value={generatorData.commission}
-                            onChange={(e) => onUpdate({ commission: Number(e.target.value) })}
+                            value={strategyForm.commission}
+                            onChange={(e) => setStrategyForm({ ...strategyForm, commission: Number(e.target.value) })}
                           />
                           <span className="text-brand-navy font-bold">%</span>
                         </div>

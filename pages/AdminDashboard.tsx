@@ -61,6 +61,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 }) => {
   const { error, refreshData } = useSystem();
 
+  const handleUpdateGenerator = (id: string, updates: Partial<EnergyProvider>) => {
+    console.log('[AdminDashboard] handleUpdateGenerator called:', id, updates);
+    onUpdateGenerator(id, updates);
+  };
+
   const navigate = useNavigate();
   const manualUploadRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState('overview');
@@ -594,7 +599,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         activeTab={activeTab}
         onTabChange={setActiveTab}
         items={sidebarItems}
-        onLogout={() => navigate('/')}
+        onLogout={() => {
+          localStorage.clear();
+          window.location.href = '/';
+        }}
       />
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
@@ -635,7 +643,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               clients={clients}
               onToggleStatus={onToggleStatus}
               onDeleteGenerator={onDeleteGenerator}
-              onUpdateGenerator={onUpdateGenerator}
+              onUpdateGenerator={handleUpdateGenerator}
               onEditGenerator={setEditingGenerator}
               onNewGenerator={() => setEditingGenerator({ id: '', name: '', type: 'Solar', region: '', capacity: '0', status: 'pending', discount: 15, commission: 5 } as any)}
               onActivateAll={onActivateAll}
@@ -701,7 +709,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             onClose={() => setEditingGenerator(null)}
             onSmartFill={handleSmartFill}
             onSave={(data) => {
-              if (data.id) onUpdateGenerator(data.id, data);
+              if (data.id) handleUpdateGenerator(data.id, data);
               else onAddGenerator(data);
               setEditingGenerator(null);
               triggerToast('Salvo com sucesso!');

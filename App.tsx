@@ -114,7 +114,8 @@ const App: React.FC = () => {
   const handleLogin = async (role: UserRole, name: string) => {
     setUser({ role, name });
     updateUserData({ name, isAlreadyRegistered: role === UserRole.CONSUMER });
-    await refreshData();
+    // Fire and forget refresh to avoid blocking UI transition, FORCE it to bypass login page check
+    refreshData(true).catch(console.error);
   };
 
   const handleClientRegistration = async (password?: string) => {
@@ -390,14 +391,29 @@ const App: React.FC = () => {
                       locationState: currentGen?.region?.split('/')?.[1]?.trim() || currentGen?.state || 'MG',
                       locationCity: currentGen?.region?.split('/')?.[0]?.trim() || currentGen?.city || 'Sua Cidade',
                       discount: currentGen?.discount || 15,
-                      commission: currentGen?.commission || 5,
-                      agreements: '',
-                      logoUrl: currentGen?.logoUrl || (currentGen as any)?.logo_url
+                      commission: currentGen?.commission !== undefined ? currentGen.commission : 5,
+                      agreements: currentGen?.agreements || (currentGen as any)?.agreements || '',
+                      logoUrl: currentGen?.logoUrl || (currentGen as any)?.logo_url,
+                      responsiblePhone: currentGen?.responsiblePhone || '',
+                      accessEmail: currentGen?.accessEmail || '',
+                      accessPassword: currentGen?.accessPassword || '',
+                      company: currentGen?.company || '',
+                      website: currentGen?.website || ''
                     }}
                     onUpdate={async (updates) => {
+                      console.log('[App.tsx] onUpdate called with:', updates);
                       if (currentGen?.id) {
-                        await AdminService.updateGenerator(currentGen.id, updates);
-                        await refreshData();
+                        console.log('[App.tsx] Updating generator:', currentGen.id);
+                        try {
+                          await AdminService.updateGenerator(currentGen.id, updates);
+                          refreshData();
+                          console.log('[App.tsx] Update initiated');
+                        } catch (err) {
+                          console.error('[App.tsx] Update failed:', err);
+                          throw err; // Propagate to GeneratorDashboard
+                        }
+                      } else {
+                        console.warn('[App.tsx] No currentGen ID found!');
                       }
                     }}
                     clients={activeClients}

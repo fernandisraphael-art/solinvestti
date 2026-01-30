@@ -9,7 +9,7 @@ interface SystemContextType {
     clients: any[];
     isLoading: boolean;
     error: string | null;
-    refreshData: () => Promise<void>;
+    refreshData: (force?: boolean) => Promise<void>;
     maintenanceMode: boolean;
     toggleMaintenanceMode: () => void;
 }
@@ -37,14 +37,33 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         localStorage.setItem('solinvestti_maintenance', JSON.stringify(newVal));
     };
 
-    const refreshData = async () => {
-        console.log('[SystemContext] refreshData called...');
+    const refreshData = async (force?: boolean) => {
+        console.log('[SystemContext] refreshData called...', { force });
         if (!isMountedRef.current) {
             console.log('[SystemContext] Component not mounted, skipping.');
             return;
         }
+        // CRITICAL: Check page location FIRST before any async calls
+        const isLoginPage = window.location.pathname.includes('login') || window.location.pathname === '/';
+
+        // Skip only if login page AND NOT forced
+        if (isLoginPage && !force) {
+            console.log('[SystemContext] On Login Page (and not forced), skipping data fetch immediately.');
+            setIsLoading(false);
+            return;
+        }
+
         setIsLoading(true);
         setError(null);
+
+        // Check if we have a session first (only if not on login page)
+        const { data: { session } } = await import('../lib/supabase').then(m => m.supabase.auth.getSession());
+
+        if (!session) {
+            console.log('[SystemContext] No session, skipping data fetch.');
+            setIsLoading(false);
+            return;
+        }
 
         try {
             console.log('[SystemContext] Starting data fetch...');
@@ -97,7 +116,7 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 responsiblePhone: g.responsible_phone,
                 icon: 'wb_sunny',
                 color: 'from-emerald-600 to-teal-500',
-                logoUrl: g.logo_url || null,
+                logoUrl: g.logoUrl || g.logo_url || null,
                 accessEmail: g.access_email,
                 accessPassword: g.access_password,
                 annualRevenue: Number(g.annual_revenue),

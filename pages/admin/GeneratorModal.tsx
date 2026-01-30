@@ -30,13 +30,48 @@ const GeneratorModal: React.FC<GeneratorModalProps> = ({ generator, onClose, onS
                 <div className="p-5 overflow-y-auto space-y-5 custom-scrollbar">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-3">
+                            <h4 className="text-[9px] font-black text-primary uppercase tracking-[0.2em]">Identidade Visual</h4>
+                            <div className="flex items-center gap-4">
+                                <div className="relative group size-20 bg-white rounded-xl shadow-lg flex items-center justify-center overflow-hidden border-2 border-slate-50">
+                                    {generator.logoUrl ? (
+                                        <img src={generator.logoUrl} alt="Logo" className="w-full h-full object-contain p-2" />
+                                    ) : (
+                                        <span className="material-symbols-outlined text-2xl text-slate-300">add_photo_alternate</span>
+                                    )}
+                                    <label className="absolute inset-0 bg-brand-navy/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white">
+                                        <span className="material-symbols-outlined text-sm">edit</span>
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                    const reader = new FileReader();
+                                                    reader.onloadend = () => {
+                                                        onUpdateField('logoUrl', reader.result as string);
+                                                    };
+                                                    reader.readAsDataURL(file);
+                                                }
+                                            }}
+                                        />
+                                    </label>
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-[10px] text-white/50 mb-1">Logo da Usina (Exibida no Marketplace)</p>
+                                    <p className="text-[9px] text-white/30">Recomendado: 500x500px (PNG/JPG)</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3">
                             <h4 className="text-[9px] font-black text-primary uppercase tracking-[0.2em]">Identificação da Usina</h4>
                             <div className="grid grid-cols-1 gap-3">
                                 <div>
                                     <label className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-1 block">Nome Comercial</label>
                                     <input
                                         value={generator.name || ''}
-                                        onChange={e => onUpdateField('name', e.target.value.toUpperCase())}
+                                        onChange={e => onUpdateField('name', e.target.value)}
                                         className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-sm text-white font-bold outline-none focus:ring-2 ring-primary/20"
                                         placeholder="Ex: Solar Power SP"
                                     />
@@ -48,6 +83,15 @@ const GeneratorModal: React.FC<GeneratorModalProps> = ({ generator, onClose, onS
                                         onChange={e => onUpdateField('company', e.target.value.toUpperCase())}
                                         className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-sm text-white font-bold outline-none focus:ring-2 ring-primary/20"
                                         placeholder="Ex: Usina Solar LTDA"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-1 block">Website</label>
+                                    <input
+                                        value={generator.website || ''}
+                                        onChange={e => onUpdateField('website', e.target.value.toLowerCase())}
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-sm text-white font-bold outline-none focus:ring-2 ring-primary/20"
+                                        placeholder="https://..."
                                     />
                                 </div>
                             </div>
