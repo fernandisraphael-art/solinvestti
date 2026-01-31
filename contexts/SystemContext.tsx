@@ -59,12 +59,6 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         // Check if we have a session first (only if not on login page)
         const { data: { session } } = await import('../lib/supabase').then(m => m.supabase.auth.getSession());
 
-        if (!session) {
-            console.log('[SystemContext] No session, skipping data fetch.');
-            setIsLoading(false);
-            return;
-        }
-
         try {
             console.log('[SystemContext] Starting data fetch...');
             // Fetch each data type independently to prevent one failure from breaking all
@@ -93,15 +87,21 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 return null;
             };
 
-            // Fetch with retry for each service
+            // ALWAYS fetch generators (public data for marketplace)
+            // This allows unauthenticated users to see available providers during signup
             genData = (await fetchWithRetry(() => AdminService.fetchGenerators())) || [];
             console.log('[SystemContext] Generators fetched:', genData.length);
 
-            concData = (await fetchWithRetry(() => AdminService.fetchConcessionaires())) || [];
-            console.log('[SystemContext] Concessionaires fetched:', concData.length);
+            // Only fetch sensitive data if user is authenticated
+            if (session) {
+                concData = (await fetchWithRetry(() => AdminService.fetchConcessionaires())) || [];
+                console.log('[SystemContext] Concessionaires fetched:', concData.length);
 
-            clientData = (await fetchWithRetry(() => AdminService.fetchClients())) || [];
-            console.log('[SystemContext] Clients fetched:', clientData.length);
+                clientData = (await fetchWithRetry(() => AdminService.fetchClients())) || [];
+                console.log('[SystemContext] Clients fetched:', clientData.length);
+            } else {
+                console.log('[SystemContext] No session, skipping sensitive data fetch (clients/concessionaires)');
+            }
 
             // Only update state if component is still mounted
             if (!isMountedRef.current) return;
