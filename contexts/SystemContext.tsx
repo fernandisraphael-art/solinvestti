@@ -44,11 +44,14 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             return;
         }
         // CRITICAL: Check page location FIRST before any async calls
-        const isLoginPage = window.location.pathname.includes('login') || window.location.pathname === '/';
+        // App uses HashRouter, so check hash not pathname (pathname is always '/')
+        const hash = window.location.hash || '';
+        const isLandingPage = hash === '' || hash === '#/' || hash === '#';
+        const isLoginPage = hash.includes('login') || hash.includes('auth');
 
-        // Skip only if login page AND NOT forced
-        if (isLoginPage && !force) {
-            console.log('[SystemContext] On Login Page (and not forced), skipping data fetch immediately.');
+        // Skip only if on landing/login page AND NOT forced
+        if ((isLandingPage || isLoginPage) && !force) {
+            console.log('[SystemContext] On Landing/Login Page (and not forced), skipping data fetch immediately.');
             setIsLoading(false);
             return;
         }

@@ -117,16 +117,28 @@ export const AdminService = {
     async fetchGenerators() {
         console.log('[AdminService.fetchGenerators] Starting fetch...');
 
-        // Use direct fetch first (more reliable)
+        // Use direct fetch first (more reliable for public data)
+        // RLS policy "Generators are viewable by everyone" allows public read
         try {
-            console.log('[AdminService.fetchGenerators] Using direct fetch...');
-            // Forces SDK Fallback because RLS for Anon returns empty, bypassing authentication
-            throw new Error('Skipping DirectFetch due to RLS blocks');
+            console.log('[AdminService.fetchGenerators] Using direct fetch (public access)...');
+            const data = await directFetch<any>('generators');
 
-            // const data = await directFetch<any>('generators');
-            // ... (rest of mapping code)
+            if (data && data.length > 0) {
+                console.log('[AdminService.fetchGenerators] Direct fetch success, count:', data.length);
+                return data.map((g: any) => ({
+                    ...g,
+                    responsibleName: g.responsible_name,
+                    responsiblePhone: g.responsible_phone,
+                    annualRevenue: g.annual_revenue,
+                    estimatedSavings: g.estimated_savings,
+                    accessEmail: g.access_email,
+                    accessPassword: g.access_password,
+                    logoUrl: g.logo_url,
+                    agreements: g.agreements
+                }));
+            }
         } catch (fetchErr: any) {
-            console.warn('[AdminService.fetchGenerators] Direct fetch skipped/failed, using SDK:', fetchErr?.message);
+            console.warn('[AdminService.fetchGenerators] Direct fetch failed, trying SDK:', fetchErr?.message);
         }
 
         // Fallback: Try SDK
