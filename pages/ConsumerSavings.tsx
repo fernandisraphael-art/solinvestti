@@ -8,6 +8,11 @@ const ConsumerSavings: React.FC<{ userData: any }> = ({ userData }) => {
   const [analysis, setAnalysis] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  // Debug: log userData to see what's being received
+  console.log('[ConsumerSavings] userData received:', userData);
+  console.log('[ConsumerSavings] billValue:', userData.billValue, 'type:', typeof userData.billValue);
+  console.log('[ConsumerSavings] selectedProvider:', userData.selectedProvider);
+
   const originalBill = Number(userData.billValue) || 0;
   const providerDiscount = userData.selectedProvider ? userData.selectedProvider.discount / 100 : 0.18;
 

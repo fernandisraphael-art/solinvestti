@@ -106,11 +106,15 @@ const ConsumerMarketplace: React.FC<ConsumerMarketplaceProps> = ({ userData, gen
   const { error, isLoading, refreshData } = useSystem();
   const [billValue, setBillValue] = useState(userData.billValue || '0');
 
+  // Debug: log initial userData.billValue
+  console.log('[Marketplace] Initial userData.billValue:', userData.billValue, 'local billValue:', billValue);
+
   useEffect(() => {
     onSelect({ billValue });
   }, [billValue]);
 
   const handleSelect = (provider: EnergyProvider) => {
+    console.log('[Marketplace] handleSelect - billValue:', billValue, 'provider:', provider.name, 'discount:', provider.discount);
     onSelect({ selectedProvider: provider, billValue });
     navigate('/savings');
   };

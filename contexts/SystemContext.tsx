@@ -46,15 +46,23 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         // CRITICAL: Check page location FIRST before any async calls
         // App uses HashRouter, so check hash not pathname (pathname is always '/')
         const hash = window.location.hash || '';
-        const isLandingPage = hash === '' || hash === '#/' || hash === '#';
-        const isLoginPage = hash.includes('login') || hash.includes('auth');
 
-        // Skip only if on landing/login page AND NOT forced
-        if ((isLandingPage || isLoginPage) && !force) {
+        // Only skip fetch on the actual landing page OR login/auth pages
+        // Public routes like /signup, /marketplace NEED generators to be loaded
+        const isActualLandingPage = hash === '' || hash === '#/' || hash === '#';
+        const isLoginPage = hash.includes('login') || hash.includes('auth');
+        const isPublicFlowPage = hash.includes('signup') || hash.includes('marketplace') ||
+            hash.includes('savings') || hash.includes('investment') ||
+            hash.includes('finalize');
+
+        // Skip only if on landing/login AND NOT on public flow pages AND NOT forced
+        if ((isActualLandingPage || isLoginPage) && !isPublicFlowPage && !force) {
             console.log('[SystemContext] On Landing/Login Page (and not forced), skipping data fetch immediately.');
             setIsLoading(false);
             return;
         }
+
+        console.log('[SystemContext] Proceeding with data fetch for:', hash);
 
         setIsLoading(true);
         setError(null);
@@ -154,6 +162,25 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         isMountedRef.current = true;
         retryCountRef.current = 0;
 
+        // Handler for hash changes (route navigation in HashRouter)
+        const handleHashChange = () => {
+            const hash = window.location.hash || '';
+            const isPublicFlowPage = hash.includes('signup') || hash.includes('marketplace') ||
+                hash.includes('savings') || hash.includes('investment') ||
+                hash.includes('finalize');
+
+            console.log('[SystemContext] Hash changed to:', hash, 'isPublicFlow:', isPublicFlowPage, 'generators:', generators.length);
+
+            // If navigating to a public flow page and generators are empty, force refresh
+            if (isPublicFlowPage && generators.length === 0) {
+                console.log('[SystemContext] Forcing refresh for public flow page with empty generators');
+                refreshData(true);
+            }
+        };
+
+        // Listen for hash changes
+        window.addEventListener('hashchange', handleHashChange);
+
         // Delay initial fetch slightly to avoid race condition with Supabase SDK initialization
         const timeoutId = setTimeout(() => {
             if (isMountedRef.current) {
@@ -164,8 +191,9 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         return () => {
             isMountedRef.current = false;
             clearTimeout(timeoutId);
+            window.removeEventListener('hashchange', handleHashChange);
         };
-    }, []);
+    }, [generators.length]);
 
     return (
         <SystemContext.Provider value={{ generators, concessionaires, clients, isLoading, error, refreshData, maintenanceMode, toggleMaintenanceMode }}>
