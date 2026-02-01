@@ -226,6 +226,7 @@ const GeneratorModal: React.FC<GeneratorModalProps> = ({ generator, onClose, onS
                             // Ensure capacity is present (even if empty string)
                             capacity: generator.capacity ?? ''
                         };
+                        console.log('[GeneratorModal] Saving generator with id:', sanitized.id, 'data:', JSON.stringify(sanitized, null, 2));
                         onSave(sanitized);
                     }} className="px-8 py-3 bg-primary text-brand-navy rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2">
                         <span className="material-symbols-outlined text-sm">save</span> Salvar Alterações

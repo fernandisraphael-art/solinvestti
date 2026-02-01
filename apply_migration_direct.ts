@@ -5,19 +5,29 @@ const client = new Client({
     user: 'postgres',
     host: 'db.fsmbeutvsxjlctthvmas.supabase.co',
     database: 'postgres',
-    password: 'R@phael1',
+    password: 'Rc13303546',
     port: 5432,
 });
 
 const sql = `
-ALTER TABLE generators ADD COLUMN IF NOT EXISTS logo_url text;
-ALTER TABLE generators ADD COLUMN IF NOT EXISTS company text;
-ALTER TABLE generators ADD COLUMN IF NOT EXISTS website text;
-ALTER TABLE generators ADD COLUMN IF NOT EXISTS responsible_phone text;
-ALTER TABLE generators ADD COLUMN IF NOT EXISTS access_email text;
-ALTER TABLE generators ADD COLUMN IF NOT EXISTS access_password text;
+-- Drop existing insert policy if it exists to avoid conflict
+DROP POLICY IF EXISTS "Enable insert for authenticated users" ON generators;
+DROP POLICY IF EXISTS "Enable insert for all users" ON generators;
+DROP POLICY IF EXISTS "Enable insert for service_role" ON generators;
 
-COMMENT ON COLUMN generators.logo_url IS 'URL of the generator logo image';
+-- Create a permissive insert policy for authenticated users (like admin)
+CREATE POLICY "Enable insert for authenticated users"
+ON generators
+FOR INSERT
+TO authenticated
+WITH CHECK (true);
+
+-- Ensure RLS is enabled
+ALTER TABLE generators ENABLE ROW LEVEL SECURITY;
+
+-- Grant necessary permissions just in case
+GRANT ALL ON TABLE generators TO authenticated;
+GRANT ALL ON TABLE generators TO service_role;
 `;
 
 async function main() {
@@ -26,9 +36,9 @@ async function main() {
         await client.connect();
         console.log('Connected successfully.');
 
-        console.log('Applying migration...');
+        console.log('Applying RLS migration...');
         await client.query(sql);
-        console.log('Migration applied successfully!');
+        console.log('RLS Migration applied successfully!');
 
     } catch (err: any) {
         console.error('Migration failed:', err.message);

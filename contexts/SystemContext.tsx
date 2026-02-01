@@ -2,6 +2,8 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { EnergyProvider, Concessionaire } from '../types';
 import { AdminService } from '../lib/services/admin.service';
+import { useAuth } from './AuthContext'; // Import useAuth
+import { UserRole } from '../types'; // Import UserRole if not already
 
 interface SystemContextType {
     generators: EnergyProvider[];
@@ -17,6 +19,7 @@ interface SystemContextType {
 const SystemContext = createContext<SystemContextType | undefined>(undefined);
 
 export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const { user } = useAuth(); // Consume AuthContext
     const [generators, setGenerators] = useState<EnergyProvider[]>([]);
     const [concessionaires, setConcessionaires] = useState<Concessionaire[]>([]);
     const [clients, setClients] = useState<any[]>([]);
@@ -49,14 +52,16 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
         // Only skip fetch on the actual landing page OR login/auth pages
         // Public routes like /signup, /marketplace NEED generators to be loaded
+        // Admin/Generator routes need ALL data loaded
         const isActualLandingPage = hash === '' || hash === '#/' || hash === '#';
         const isLoginPage = hash.includes('login') || hash.includes('auth');
-        const isPublicFlowPage = hash.includes('signup') || hash.includes('marketplace') ||
+        const needsDataFetch = hash.includes('signup') || hash.includes('marketplace') ||
             hash.includes('savings') || hash.includes('investment') ||
-            hash.includes('finalize');
+            hash.includes('finalize') || hash.includes('admin') ||
+            hash.includes('generator') || hash.includes('consumer-dashboard');
 
-        // Skip only if on landing/login AND NOT on public flow pages AND NOT forced
-        if ((isActualLandingPage || isLoginPage) && !isPublicFlowPage && !force) {
+        // Skip only if on landing/login AND NOT on data-needing pages AND NOT forced
+        if ((isActualLandingPage || isLoginPage) && !needsDataFetch && !force) {
             console.log('[SystemContext] On Landing/Login Page (and not forced), skipping data fetch immediately.');
             setIsLoading(false);
             return;
@@ -103,15 +108,19 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             genData = (await fetchWithRetry(() => AdminService.fetchGenerators())) || [];
             console.log('[SystemContext] Generators fetched:', genData.length);
 
-            // Only fetch sensitive data if user is authenticated
-            if (session) {
-                concData = (await fetchWithRetry(() => AdminService.fetchConcessionaires())) || [];
-                console.log('[SystemContext] Concessionaires fetched:', concData.length);
+            // Only fetch sensitive data if user is authenticated OR is a generator (custom login)
+            if (session || user?.role === UserRole.GENERATOR) {
+                if (session) {
+                    concData = (await fetchWithRetry(() => AdminService.fetchConcessionaires())) || [];
+                    console.log('[SystemContext] Concessionaires fetched:', concData.length);
+                }
 
+                // Generators need clients even without full session (via custom Auth)
+                // Note: RLS must allow anon read if provider_id matches, or we rely on unsecured access for now (legacy mode)
                 clientData = (await fetchWithRetry(() => AdminService.fetchClients())) || [];
                 console.log('[SystemContext] Clients fetched:', clientData.length);
             } else {
-                console.log('[SystemContext] No session, skipping sensitive data fetch (clients/concessionaires)');
+                console.log('[SystemContext] No session/role, skipping sensitive data fetch');
             }
 
             // Only update state if component is still mounted
@@ -134,7 +143,8 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 company: g.company,
                 landline: g.landline,
                 city: g.city,
-                website: g.website
+                website: g.website,
+                status: g.status // Removed force 'active' to respect DB reality
             })));
 
             setConcessionaires(concData || []);
@@ -165,15 +175,16 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         // Handler for hash changes (route navigation in HashRouter)
         const handleHashChange = () => {
             const hash = window.location.hash || '';
-            const isPublicFlowPage = hash.includes('signup') || hash.includes('marketplace') ||
+            const needsDataOnPage = hash.includes('signup') || hash.includes('marketplace') ||
                 hash.includes('savings') || hash.includes('investment') ||
-                hash.includes('finalize');
+                hash.includes('finalize') || hash.includes('admin') ||
+                hash.includes('generator') || hash.includes('consumer-dashboard');
 
-            console.log('[SystemContext] Hash changed to:', hash, 'isPublicFlow:', isPublicFlowPage, 'generators:', generators.length);
+            console.log('[SystemContext] Hash changed to:', hash, 'needsData:', needsDataOnPage, 'generators:', generators.length);
 
-            // If navigating to a public flow page and generators are empty, force refresh
-            if (isPublicFlowPage && generators.length === 0) {
-                console.log('[SystemContext] Forcing refresh for public flow page with empty generators');
+            // If navigating to a data-needing page and generators are empty, force refresh
+            if (needsDataOnPage && generators.length === 0) {
+                console.log('[SystemContext] Forcing refresh for page with empty generators');
                 refreshData(true);
             }
         };
@@ -193,7 +204,7 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             clearTimeout(timeoutId);
             window.removeEventListener('hashchange', handleHashChange);
         };
-    }, [generators.length]);
+    }, [generators.length, user]); // Add user to dependencies to trigger refresh on login
 
     return (
         <SystemContext.Provider value={{ generators, concessionaires, clients, isLoading, error, refreshData, maintenanceMode, toggleMaintenanceMode }}>

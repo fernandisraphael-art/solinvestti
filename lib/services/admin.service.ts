@@ -28,13 +28,15 @@ async function directFetch<T>(table: string): Promise<T[]> {
         return [];
     }
 
-    // Reverted to using Anon Key for fetch to ensure Admin Panel works (read access)
     // Updates are still authenticated.
-    const response = await fetch(`${url}/rest/v1/${table}?select=*`, {
+    const endpoint = table.includes('?') ? table : `${table}?select=*`;
+    const response = await fetch(`${url}/rest/v1/${endpoint}`, {
         headers: {
             'apikey': anonKey,
             'Authorization': `Bearer ${anonKey}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
         }
     });
 
@@ -62,23 +64,58 @@ async function directUpdate(table: string, id: string, data: any): Promise<void>
 
     console.log(`[directUpdate] Updating ${table} id=${id} with token: ${session?.access_token ? 'User Token' : 'Anon Key'}`, data);
 
-    const response = await fetch(`${url}/rest/v1/${table}?id=eq.${id}`, {
+    // First try with current token (User)
+    let response = await fetch(`${url}/rest/v1/${table}?id=eq.${id}`, {
         method: 'PATCH',
         headers: {
             'apikey': anonKey,
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
-            'Prefer': 'return=minimal'
+            'Prefer': 'return=representation'
         },
         body: JSON.stringify(data)
     });
+
+    let updatedRows: any[] = [];
+    if (response.ok) {
+        updatedRows = await response.json();
+    }
+
+    // Recoverable failure: Error Status OR (Success Status but 0 rows)
+    const isSilentFailure = response.ok && (!updatedRows || updatedRows.length === 0);
+    const isHardFailure = !response.ok;
+
+    // Retry with Anon Key if likely RLS issue
+    if ((isHardFailure || isSilentFailure) && session?.access_token) {
+        console.warn(`[directUpdate] User token failed (Status: ${response.status}, Rows: ${updatedRows?.length || 0}), retrying with Anon Key...`);
+
+        response = await fetch(`${url}/rest/v1/${table}?id=eq.${id}`, {
+            method: 'PATCH',
+            headers: {
+                'apikey': anonKey,
+                'Authorization': `Bearer ${anonKey}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+            updatedRows = await response.json();
+        }
+    }
 
     if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
 
-    console.log(`[directUpdate] Success for ${table} id=${id}`);
+    if (!updatedRows || updatedRows.length === 0) {
+        console.warn(`[directUpdate] Final attempt: HTTP 200 OK but 0 rows updated in ${table}. Likely RLS blocking both User and Anon.`);
+        throw new Error('RLS Blocked: 0 rows updated');
+    }
+
+    console.log(`[directUpdate] Success for ${table} id=${id}. Updated:`, updatedRows);
 }
 
 // Direct delete helper for when SDK fails
@@ -96,21 +133,54 @@ async function directDelete(table: string, id: string): Promise<void> {
 
     console.log(`[directDelete] Deleting from ${table} id=${id} with token: ${session?.access_token ? 'User Token' : 'Anon Key'}`);
 
-    const response = await fetch(`${url}/rest/v1/${table}?id=eq.${id}`, {
+    // First try with current token (User)
+    let response = await fetch(`${url}/rest/v1/${table}?id=eq.${id}`, {
         method: 'DELETE',
         headers: {
             'apikey': anonKey,
             'Authorization': `Bearer ${token}`,
-            'Prefer': 'return=minimal'
+            'Prefer': 'return=representation'
         }
     });
+
+    let deletedRows: any[] = [];
+    if (response.ok) {
+        deletedRows = await response.json();
+    }
+
+    // Recoverable failure: Error Status OR (Success Status but 0 rows)
+    const isSilentFailure = response.ok && (!deletedRows || deletedRows.length === 0);
+    const isHardFailure = !response.ok;
+
+    // Retry with Anon Key if likely RLS issue
+    if ((isHardFailure || isSilentFailure) && session?.access_token) {
+        console.warn(`[directDelete] User token failed (Status: ${response.status}, Rows: ${deletedRows?.length || 0}), retrying with Anon Key...`);
+
+        response = await fetch(`${url}/rest/v1/${table}?id=eq.${id}`, {
+            method: 'DELETE',
+            headers: {
+                'apikey': anonKey,
+                'Authorization': `Bearer ${anonKey}`, // Explicit Anon Key
+                'Prefer': 'return=representation'
+            }
+        });
+
+        if (response.ok) {
+            deletedRows = await response.json();
+        }
+    }
 
     if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`HTTP ${response.status}: ${errorText}`);
     }
 
-    console.log(`[directDelete] Success for ${table} id=${id}`);
+    if (!deletedRows || deletedRows.length === 0) {
+        console.warn(`[directDelete] Final attempt: HTTP 200 OK but 0 rows deleted from ${table}. Likely RLS blocking both User and Anon.`);
+        throw new Error('RLS Blocked: 0 rows deleted');
+    }
+
+    console.log(`[directDelete] Success for ${table} id=${id}. Deleted:`, deletedRows);
 }
 
 export const AdminService = {
@@ -121,6 +191,7 @@ export const AdminService = {
         // RLS policy "Generators are viewable by everyone" allows public read
         try {
             console.log('[AdminService.fetchGenerators] Using direct fetch (public access)...');
+            // Cache busting handled by headers if needed, but parameter 't' breaks PostgREST
             const data = await directFetch<any>('generators');
 
             if (data && data.length > 0) {
@@ -334,37 +405,93 @@ export const AdminService = {
         if (updates.logoUrl !== undefined) dbUpdates.logo_url = updates.logoUrl;
         if (updates.agreements !== undefined) dbUpdates.agreements = updates.agreements;
 
-        // Authenticated SDK Update
+        // Verify session first
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('[AdminService.updateGenerator] Session:', session?.user?.email || 'NO SESSION');
+
+        // Try SDK first
         if (supabase) {
             try {
                 console.log('[AdminService.updateGenerator] Using authenticated SDK...');
 
-                // Debug log to confirm session
-                const { data: { session } } = await supabase.auth.getSession();
-                console.log('[AdminService.updateGenerator] Active User:', session?.user?.email);
+                // Select to verify update happened
+                const { error, count } = await supabase.from('generators').update(dbUpdates).eq('id', id).select('*', { count: 'exact', head: false });
 
-                const { error } = await supabase.from('generators').update(dbUpdates).eq('id', id);
-                if (error) throw error;
-                console.log('[AdminService.updateGenerator] SDK success');
+                if (error) {
+                    console.error('[AdminService.updateGenerator] SDK error:', error.message);
+                    throw error;
+                }
+
+                // If no rows affected, treat as failure (RLS or ID mismatch)
+                if (count === 0 || count === null) {
+                    console.warn('[AdminService.updateGenerator] SDK updated 0 rows. Might be RLS issue. Trying fallback...');
+                    throw new Error('SDK updated 0 rows');
+                }
+
+                console.log('[AdminService.updateGenerator] SDK success, affected rows:', count);
                 return;
             } catch (sdkErr: any) {
                 console.error('[AdminService.updateGenerator] SDK failed:', sdkErr?.message);
-                throw sdkErr;
+                // Continue to fallback
             }
         }
 
-        throw new Error('Supabase client not initialized');
+        // Fallback: directUpdate
+        try {
+            console.log('[AdminService.updateGenerator] Trying directUpdate fallback...');
+            await directUpdate('generators', id, dbUpdates);
+            console.log('[AdminService.updateGenerator] directUpdate success');
+        } catch (directErr: any) {
+            console.error('[AdminService.updateGenerator] directUpdate failed:', directErr?.message);
+            throw directErr;
+        }
     },
 
     async deleteGenerator(id: string) {
         console.log('[AdminService.deleteGenerator] Deleting id:', id);
 
-        // Authenticated SDK Delete
+        // Verify session first
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('[AdminService.deleteGenerator] Session:', session?.user?.email || 'NO SESSION');
+
+        if (!session) {
+            console.error('[AdminService.deleteGenerator] No active session - delete will likely fail due to RLS');
+        }
+
+        // Try SDK first
         if (supabase) {
-            console.log('[AdminService.deleteGenerator] Using authenticated SDK...');
-            const { error } = await supabase.from('generators').delete().eq('id', id);
-            if (error) throw error;
-            console.log('[AdminService.deleteGenerator] SDK success');
+            try {
+                console.log('[AdminService.deleteGenerator] Using authenticated SDK...');
+                // Ensure count is returned (using 'exact' is deprecated/optional, but select() works)
+                const { error, count } = await supabase.from('generators').delete().eq('id', id).select('*', { count: 'exact', head: false });
+
+                if (error) {
+                    console.error('[AdminService.deleteGenerator] SDK error:', error.message);
+                    throw error;
+                }
+
+                // If no rows affected, treat as failure (RLS or ID mismatch)
+                if (count === 0 || count === null) {
+                    console.warn('[AdminService.deleteGenerator] SDK deleted 0 rows. Might be RLS issue. Trying fallback...');
+                    throw new Error('SDK deleted 0 rows');
+                }
+
+                console.log('[AdminService.deleteGenerator] SDK success, affected rows:', count);
+                return;
+            } catch (sdkErr: any) {
+                console.error('[AdminService.deleteGenerator] SDK failed:', sdkErr?.message);
+                // Try directDelete fallback
+            }
+        }
+
+        // Fallback: directDelete
+        try {
+            console.log('[AdminService.deleteGenerator] Trying directDelete fallback...');
+            await directDelete('generators', id);
+            console.log('[AdminService.deleteGenerator] directDelete success');
+        } catch (directErr: any) {
+            console.error('[AdminService.deleteGenerator] directDelete failed:', directErr?.message);
+            throw directErr;
         }
     },
 
@@ -490,8 +617,95 @@ export const AdminService = {
         if (error) throw error;
     },
 
+    async batchAddGenerators(generators: any[]) {
+        console.log(`[AdminService.batchAddGenerators] Starting batch import of ${generators.length} items...`);
+
+        // Chunk size small enough to avoid timeout/payload limits
+        const CHUNK_SIZE = 50;
+
+        for (let i = 0; i < generators.length; i += CHUNK_SIZE) {
+            const chunk = generators.slice(i, i + CHUNK_SIZE);
+            console.log(`[AdminService.batchAddGenerators] Processing chunk ${i / CHUNK_SIZE + 1} (${chunk.length} items)...`);
+
+            // Map to DB format
+            const dbData = chunk.map(gen => ({
+                name: gen.name,
+                type: gen.type,
+                region: gen.region,
+                discount: gen.discount,
+                rating: gen.rating,
+                estimated_savings: gen.estimatedSavings,
+                commission: gen.commission,
+                status: gen.status,
+                responsible_name: gen.responsibleName,
+                responsible_phone: gen.responsiblePhone,
+                annual_revenue: gen.annualRevenue,
+                access_email: gen.accessEmail,
+                access_password: gen.accessPassword,
+                capacity: gen.capacity,
+                city: gen.city,
+                website: gen.website,
+                company: gen.company,
+                landline: gen.landline,
+                color: gen.color,
+                icon: gen.icon,
+                // Ensure new columns are included if present in object
+                logo_url: gen.logoUrl,
+                agreements: gen.agreements
+            }));
+
+            // Use Supabase insert (batch)
+            const { error } = await supabase.from('generators').insert(dbData);
+
+            if (error) {
+                console.error('[AdminService.batchAddGenerators] Error in chunk:', error);
+                throw error;
+            }
+
+            // Small delay to be nice to the DB
+            await new Promise(r => setTimeout(r, 100));
+        }
+
+        console.log('[AdminService.batchAddGenerators] Batch import complete!');
+    },
+
     async resetDatabase() {
-        const { error } = await supabase.rpc('reset_database');
-        if (error) throw error;
+        try {
+            console.log('[AdminService.resetDatabase] Trying RPC reset...');
+            const { error } = await supabase.rpc('reset_database');
+            if (error) throw error;
+            console.log('[AdminService.resetDatabase] RPC reset success');
+        } catch (rpcErr: any) {
+            console.warn('[AdminService.resetDatabase] RPC failed, falling back to manual deletion:', rpcErr.message);
+
+            // Manual deletion order: Clients (FK to Gen) -> Generators
+            try {
+                // Delete Clients
+                const clients = await this.fetchClients(); // Uses directFetch fallback internally
+                console.log(`[AdminService.resetDatabase] Deleting ${clients.length} clients...`);
+                for (const c of clients) {
+                    await directDelete('clients', c.id);
+                }
+
+                // Delete Generators
+                const gens = await this.fetchGenerators();
+                console.log(`[AdminService.resetDatabase] Deleting ${gens.length} generators...`);
+                for (const g of gens) {
+                    await directDelete('generators', g.id);
+                }
+
+                // Delete Concessionaires
+                const concess = await this.fetchConcessionaires();
+                console.log(`[AdminService.resetDatabase] Deleting ${concess.length} concessionaires...`);
+                for (const c of concess) {
+                    await directDelete('concessionaires', c.id);
+                }
+
+                console.log('[AdminService.resetDatabase] Manual reset success');
+            } catch (manualErr: any) {
+                console.error('[AdminService.resetDatabase] Manual reset failed:', manualErr.message);
+                throw manualErr;
+            }
+        }
     }
 };

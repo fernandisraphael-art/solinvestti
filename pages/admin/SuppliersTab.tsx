@@ -259,18 +259,30 @@ const SuppliersTab: React.FC<SuppliersTabProps> = ({
                                         )}
                                     </div>
 
-                                    <div className="flex gap-1 relative z-50">
+                                    <div className="flex gap-1 relative z-[100]" style={{ pointerEvents: 'auto' }}>
                                         <button
-                                            onClick={(e) => { e.stopPropagation(); onEditGenerator(gen); }}
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                onEditGenerator(gen);
+                                            }}
                                             className="size-6 rounded bg-white/5 hover:bg-blue-500/20 text-white/40 hover:text-blue-400 flex items-center justify-center transition-colors cursor-pointer"
                                             title="Editar"
+                                            style={{ pointerEvents: 'auto', position: 'relative', zIndex: 101 }}
                                         >
                                             <span className="material-symbols-outlined text-[14px]">edit</span>
                                         </button>
                                         <button
-                                            onClick={(e) => { e.stopPropagation(); onDeleteGenerator(gen.id!); }}
+                                            type="button"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                if (gen.id) onDeleteGenerator(gen.id);
+                                            }}
                                             className="size-6 rounded bg-white/5 hover:bg-red-500/20 text-white/40 hover:text-red-400 flex items-center justify-center transition-colors cursor-pointer"
                                             title="Excluir"
+                                            style={{ pointerEvents: 'auto', position: 'relative', zIndex: 101 }}
                                         >
                                             <span className="material-symbols-outlined text-[14px]">delete</span>
                                         </button>

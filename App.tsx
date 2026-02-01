@@ -94,6 +94,9 @@ const App: React.FC = () => {
   const { user, setUser, isLoading } = useAuth();
   const { generators, concessionaires, clients, refreshData } = useSystem();
 
+  // Debug: Track when generators change
+  console.log('[App] Rendering with generators:', generators.length, 'clients:', clients.length);
+
   const [userData, setUserData] = useState({
     name: '',
     email: '',
@@ -317,8 +320,16 @@ const App: React.FC = () => {
                   await AdminService.toggleGeneratorStatus(id, newStatus);
                   refreshData();
                 }}
-                onDeleteGenerator={async (id) => { await AdminService.deleteGenerator(id); refreshData(); }}
-                onUpdateGenerator={async (id, updates) => { await AdminService.updateGenerator(id, updates); refreshData(); }}
+                onDeleteGenerator={async (id) => {
+                  console.log('[App.tsx] onDeleteGenerator called for id:', id);
+                  await AdminService.deleteGenerator(id);
+                  refreshData();
+                }}
+                onUpdateGenerator={async (id, updates) => {
+                  console.log('[App.tsx] onUpdateGenerator called for id:', id, updates);
+                  await AdminService.updateGenerator(id, updates);
+                  refreshData();
+                }}
                 onAddGenerator={async (gen) => { await AdminService.addGenerator(gen); refreshData(); }}
                 onBatchAddGenerators={async (batch) => { await AdminService.batchAddGenerators(batch); refreshData(); }}
                 onActivateAll={async () => { await AdminService.activateAllGenerators(); refreshData(); }}
@@ -368,7 +379,8 @@ const App: React.FC = () => {
                   name: c.name,
                   status: 'Ativo',
                   billValue: c.bill_value || c.billValue || 0,
-                  date: new Date(c.created_at || Date.now()).toLocaleDateString('pt-BR')
+                  date: new Date(c.created_at || Date.now()).toLocaleDateString('pt-BR'),
+                  billUrl: c.bill_url || c.billUrl
                 }));
 
                 const pendingNegotiations = genClients.filter(c =>
@@ -378,12 +390,14 @@ const App: React.FC = () => {
                   name: c.name,
                   status: c.status === 'pending_approval' ? 'Análise de Crédito' : 'Aguardando Documentação',
                   billValue: c.bill_value || c.billValue || 0,
-                  date: new Date(c.created_at || Date.now()).toLocaleDateString('pt-BR')
+                  date: new Date(c.created_at || Date.now()).toLocaleDateString('pt-BR'),
+                  billUrl: c.bill_url || c.billUrl
                 }));
 
                 return (
                   <GeneratorDashboard
                     generatorData={{
+                      id: currentGen?.id || '',
                       contactName: currentGen?.responsibleName || currentGen?.responsible_name || user?.name || '',
                       socialName: currentGen?.name || '',
                       cnpj: (currentGen as any)?.cnpj || '',

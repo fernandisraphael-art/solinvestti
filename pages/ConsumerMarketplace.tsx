@@ -109,9 +109,18 @@ const ConsumerMarketplace: React.FC<ConsumerMarketplaceProps> = ({ userData, gen
   // Debug: log initial userData.billValue
   console.log('[Marketplace] Initial userData.billValue:', userData.billValue, 'local billValue:', billValue);
 
+  // Sync incoming userData to local state (fixes race condition if navigation happens before state update propagates)
   useEffect(() => {
-    onSelect({ billValue });
-  }, [billValue]);
+    if (userData.billValue && userData.billValue !== '0' && userData.billValue !== billValue) {
+      console.log('[Marketplace] Syncing billValue from props:', userData.billValue);
+      setBillValue(userData.billValue);
+    }
+  }, [userData.billValue]);
+
+  const handleBillChange = (newValue: string) => {
+    setBillValue(newValue);
+    onSelect({ billValue: newValue });
+  };
 
   const handleSelect = (provider: EnergyProvider) => {
     console.log('[Marketplace] handleSelect - billValue:', billValue, 'provider:', provider.name, 'discount:', provider.discount);
@@ -170,7 +179,7 @@ const ConsumerMarketplace: React.FC<ConsumerMarketplaceProps> = ({ userData, gen
             </p>
           </div>
 
-          <BillInput value={billValue} onChange={setBillValue} />
+          <BillInput value={billValue} onChange={handleBillChange} />
         </div>
 
 

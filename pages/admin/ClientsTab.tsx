@@ -14,6 +14,7 @@ interface ClientsTabProps {
 
 const ClientsTab: React.FC<ClientsTabProps> = ({ clients, onEditClient, onDeleteClient, onApproveClient, onUpdateClient, onActivateAll, onExportExcel, onExportPDF }) => {
     const [viewingBill, setViewingBill] = useState<string | null>(null);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
 
     const getStatusStyle = (status: string) => {
         switch (status) {
@@ -202,11 +203,25 @@ const ClientsTab: React.FC<ClientsTabProps> = ({ clients, onEditClient, onDelete
 
                             {/* Delete Button */}
                             <button
-                                onClick={() => onDeleteClient(client.id)}
-                                className="size-12 rounded-2xl bg-white/5 flex items-center justify-center text-red-400/30 hover:text-red-400 hover:bg-red-400/10 transition-all group/btn"
+                                onClick={async () => {
+                                    if (window.confirm('Tem certeza que deseja excluir este cliente?\nEsta ação é irreversível.')) {
+                                        setDeletingId(client.id);
+                                        try {
+                                            await onDeleteClient(client.id);
+                                        } finally {
+                                            setDeletingId(null);
+                                        }
+                                    }
+                                }}
+                                disabled={deletingId === client.id}
+                                className={`size-12 rounded-2xl flex items-center justify-center transition-all group/btn ${deletingId === client.id ? 'bg-red-500/20 text-red-400 cursor-not-allowed' : 'bg-white/5 text-red-400/30 hover:text-red-400 hover:bg-red-400/10'}`}
                                 title="Excluir"
                             >
-                                <span className="material-symbols-outlined text-sm group-hover/btn:rotate-12 transition-transform">delete</span>
+                                {deletingId === client.id ? (
+                                    <div className="size-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin"></div>
+                                ) : (
+                                    <span className="material-symbols-outlined text-sm group-hover/btn:rotate-12 transition-transform">delete</span>
+                                )}
                             </button>
                         </div>
                     </div>

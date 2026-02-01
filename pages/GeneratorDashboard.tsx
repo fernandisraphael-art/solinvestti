@@ -8,9 +8,11 @@ import { supabase } from '../lib/supabase';
 import { LOGO_URL } from '../constants/assets';
 import { normalizeText } from '../lib/masks';
 import { useAuth } from '../contexts/AuthContext';
+import { AdminService } from '../lib/services/admin.service';
 
 interface GeneratorDashboardProps {
   generatorData: {
+    id: string;
     contactName: string;
     socialName: string;
     cnpj: string;
@@ -242,13 +244,30 @@ const GeneratorDashboard: React.FC<GeneratorDashboardProps> = ({ generatorData, 
     console.log('[GeneratorDashboard] handleUpdateParams called');
     setIsSaving(true);
     try {
-      console.log('[GeneratorDashboard] Calling onUpdate with:', strategyForm);
-      await onUpdate({
+      /*
+       * CRITICAL: Use AdminService.updateGenerator for robust RLS fallback.
+       * The prop onUpdate might use a different path or lack the fallback context.
+       * We use the generator ID directly from props.
+       */
+      const genId = generatorData['id'] || (generatorData as any).id; // Ensure ID access
+
+      if (!genId) {
+        // Fallback if ID is missing (shouldn't happen given it's fetched)
+        throw new Error("Generator ID missing for update");
+      }
+
+      console.log('[GeneratorDashboard] Updating strategy via AdminService for ID:', genId);
+
+      await AdminService.updateGenerator(genId, {
         agreements: strategyForm.agreements,
         discount: Number(strategyForm.discount),
         commission: Number(strategyForm.commission)
       });
-      console.log('[GeneratorDashboard] onUpdate success');
+
+      // Also call prop to update local state if needed, but the service is the source of truth
+      // onUpdate(strategyForm); 
+
+      console.log('[GeneratorDashboard] onUpdate (Service) success');
       setShowToast(true);
       setTimeout(() => setShowToast(false), 3000);
     } catch (error) {
@@ -560,14 +579,22 @@ const GeneratorDashboard: React.FC<GeneratorDashboardProps> = ({ generatorData, 
                     </div>
                     <div>
                       <label className="block text-[10px] font-black text-brand-slate uppercase tracking-widest mb-3">Desconto Ofertado (%)</label>
-                      <div className="flex items-center gap-4">
-                        <input
-                          type="range" min="0" max="35"
-                          className="flex-1 h-2 bg-slate-100 rounded-full appearance-none cursor-pointer accent-primary"
-                          value={strategyForm.discount}
-                          onChange={(e) => setStrategyForm({ ...strategyForm, discount: Number(e.target.value) })}
-                        />
-                        <span className="text-2xl font-display font-black text-primary">{strategyForm.discount}%</span>
+                      <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+                        <span className="text-xs font-black text-brand-navy uppercase tracking-widest">Desconto %</span>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            className="w-20 bg-slate-50 border-none text-center font-bold text-primary text-xl outline-none"
+                            value={strategyForm.discount || ''}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/\D/g, '');
+                              const numVal = Number(val);
+                              setStrategyForm({ ...strategyForm, discount: numVal });
+                            }}
+                          />
+                          <span className="text-brand-navy font-bold">%</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -581,10 +608,14 @@ const GeneratorDashboard: React.FC<GeneratorDashboardProps> = ({ generatorData, 
                         <span className="text-xs font-black text-brand-navy uppercase tracking-widest">Comissão SOLINVESTTI</span>
                         <div className="flex items-center gap-3">
                           <input
-                            type="number"
+                            type="text"
+                            inputMode="numeric"
                             className="w-16 bg-slate-50 border-none text-center font-bold text-primary text-xl outline-none"
-                            value={strategyForm.commission}
-                            onChange={(e) => setStrategyForm({ ...strategyForm, commission: Number(e.target.value) })}
+                            value={strategyForm.commission || ''}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/\D/g, '');
+                              setStrategyForm({ ...strategyForm, commission: Number(val) });
+                            }}
                           />
                           <span className="text-brand-navy font-bold">%</span>
                         </div>
@@ -623,6 +654,7 @@ const GeneratorDashboard: React.FC<GeneratorDashboardProps> = ({ generatorData, 
                         <th className="px-10 py-6 text-[10px] font-black uppercase text-brand-slate tracking-widest">Status</th>
                         <th className="px-10 py-6 text-[10px] font-black uppercase text-brand-slate tracking-widest">Fatura Estimada</th>
                         <th className="px-10 py-6 text-[10px] font-black uppercase text-brand-slate tracking-widest">Data Conexão</th>
+                        <th className="px-10 py-6 text-[10px] font-black uppercase text-brand-slate tracking-widest text-right">Ações</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
@@ -634,6 +666,21 @@ const GeneratorDashboard: React.FC<GeneratorDashboardProps> = ({ generatorData, 
                           </td>
                           <td className="px-10 py-6 font-display font-extrabold text-brand-navy">R$ {Number(client.billValue).toLocaleString('pt-BR')}</td>
                           <td className="px-10 py-6 text-xs text-brand-slate">{client.date}</td>
+                          <td className="px-10 py-6 text-right">
+                            {client.billUrl ? (
+                              <a
+                                href={client.billUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 text-brand-slate hover:bg-primary hover:text-white rounded-lg transition-colors text-[10px] font-bold uppercase tracking-wide"
+                              >
+                                <span className="material-symbols-outlined text-sm">description</span>
+                                Fatura
+                              </a>
+                            ) : (
+                              <span className="text-[10px] text-slate-300 font-bold uppercase">Sem Fatura</span>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -668,7 +715,21 @@ const GeneratorDashboard: React.FC<GeneratorDashboardProps> = ({ generatorData, 
                             <p className="text-[10px] text-brand-slate font-black uppercase tracking-widest">{neg.status}</p>
                           </div>
                         </div>
-                        <button className="px-6 py-2 bg-brand-navy text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:scale-105 transition-transform">Ver Documentação</button>
+                        {neg.billUrl ? (
+                          <a
+                            href={neg.billUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-6 py-2 bg-brand-navy text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:scale-105 transition-transform flex items-center gap-2"
+                          >
+                            <span className="material-symbols-outlined text-sm">description</span>
+                            Ver Fatura
+                          </a>
+                        ) : (
+                          <button disabled className="px-6 py-2 bg-slate-100 text-slate-400 text-[10px] font-black uppercase tracking-widest rounded-xl cursor-not-allowed">
+                            Aguardando Doc
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>

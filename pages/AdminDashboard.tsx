@@ -642,7 +642,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               generators={generators}
               clients={clients}
               onToggleStatus={onToggleStatus}
-              onDeleteGenerator={onDeleteGenerator}
+              onDeleteGenerator={(id) => {
+                console.log('[AdminDashboard] onDeleteGenerator passed to SuppliersTab called for:', id);
+                onDeleteGenerator(id);
+              }}
               onUpdateGenerator={handleUpdateGenerator}
               onEditGenerator={setEditingGenerator}
               onNewGenerator={() => setEditingGenerator({ id: '', name: '', type: 'Solar', region: '', capacity: '0', status: 'pending', discount: 15, commission: 5 } as any)}
