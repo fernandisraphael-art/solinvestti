@@ -86,6 +86,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   useEffect(() => {
     const apiKey = localStorage.getItem('gemini_api_key');
     if (apiKey) setHasApiKey(true);
+
+    // CRITICAL: Force refresh if data is missing on mount (fixes race condition)
+    if (generators.length === 0 && clients.length === 0) {
+      console.log('[AdminDashboard] Data likely missing on mount, forcing refresh...');
+      refreshData(true);
+    }
   }, []);
 
   const triggerToast = (msg: string, type: 'info' | 'error' = 'info') => {
