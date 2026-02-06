@@ -516,6 +516,43 @@ export const AdminService = {
         try {
             await directUpdate('clients', id, updates);
             console.log('[AdminService.updateClient] Direct update success');
+
+            // Send activation email if status changed to approved
+            if (updates.status === 'approved' || updates.status === 'active') {
+                try {
+                    // Fetch client data to get email and name
+                    const clients = await this.fetchClients();
+                    const client = clients.find(c => c.id === id);
+
+                    if (client && client.email) {
+                        console.log('[AdminService.updateClient] Sending activation email to:', client.email);
+
+                        // Call email API
+                        const response = await fetch('/api/send-email', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                to: client.email,
+                                name: client.name,
+                                billValue: client.bill_value || client.billValue
+                            }),
+                        });
+
+                        if (response.ok) {
+                            console.log('[AdminService.updateClient] Activation email sent successfully');
+                        } else {
+                            const error = await response.json();
+                            console.error('[AdminService.updateClient] Failed to send email:', error);
+                        }
+                    }
+                } catch (emailError: any) {
+                    // Don't fail the update if email fails
+                    console.error('[AdminService.updateClient] Email sending failed (non-blocking):', emailError.message);
+                }
+            }
+
             return;
         } catch (directErr: any) {
             console.warn('[AdminService.updateClient] Direct update failed:', directErr?.message);
@@ -525,6 +562,39 @@ export const AdminService = {
         if (supabase) {
             const { error } = await supabase.from('clients').update(updates).eq('id', id);
             if (error) throw error;
+
+            // Send activation email if status changed to approved (SDK fallback)
+            if (updates.status === 'approved' || updates.status === 'active') {
+                try {
+                    const clients = await this.fetchClients();
+                    const client = clients.find(c => c.id === id);
+
+                    if (client && client.email) {
+                        console.log('[AdminService.updateClient] Sending activation email to:', client.email);
+
+                        const response = await fetch('/api/send-email', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                to: client.email,
+                                name: client.name,
+                                billValue: client.bill_value || client.billValue
+                            }),
+                        });
+
+                        if (response.ok) {
+                            console.log('[AdminService.updateClient] Activation email sent successfully');
+                        } else {
+                            const error = await response.json();
+                            console.error('[AdminService.updateClient] Failed to send email:', error);
+                        }
+                    }
+                } catch (emailError: any) {
+                    console.error('[AdminService.updateClient] Email sending failed (non-blocking):', emailError.message);
+                }
+            }
         }
     },
 
