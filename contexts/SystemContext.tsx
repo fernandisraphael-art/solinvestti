@@ -49,6 +49,7 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         // CRITICAL: Check page location FIRST before any async calls
         // App uses HashRouter, so check hash not pathname (pathname is always '/')
         const hash = window.location.hash || '';
+        console.log('[SystemContext] Current hash:', hash);
 
         // Only skip fetch on the actual landing page OR login/auth pages
         // Public routes like /signup, /marketplace NEED generators to be loaded
@@ -59,6 +60,15 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             hash.includes('savings') || hash.includes('investment') ||
             hash.includes('finalize') || hash.includes('admin') ||
             hash.includes('generator') || hash.includes('consumer-dashboard');
+
+        console.log('[SystemContext] Page detection:', {
+            hash,
+            isActualLandingPage,
+            isLoginPage,
+            needsDataFetch,
+            force,
+            willSkip: (isActualLandingPage || isLoginPage) && !needsDataFetch && !force
+        });
 
         // Skip only if on landing/login AND NOT on data-needing pages AND NOT forced
         if ((isActualLandingPage || isLoginPage) && !needsDataFetch && !force) {
@@ -204,7 +214,7 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             clearTimeout(timeoutId);
             window.removeEventListener('hashchange', handleHashChange);
         };
-    }, [generators.length, user]); // Add user to dependencies to trigger refresh on login
+    }, [user]); // Only depend on user, not generators.length to avoid infinite loops
 
     return (
         <SystemContext.Provider value={{ generators, concessionaires, clients, isLoading, error, refreshData, maintenanceMode, toggleMaintenanceMode }}>

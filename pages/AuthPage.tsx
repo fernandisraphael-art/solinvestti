@@ -291,7 +291,10 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, fixedRole }) => {
           return;
         }
 
+        // Wait for onLogin to complete (which now waits for data refresh)
         await onLogin(activeRole, formData.name);
+        // Small additional delay to ensure SystemContext has processed the user change
+        await new Promise(resolve => setTimeout(resolve, 300));
         redirectUser(activeRole);
       }
     } catch (err: any) {

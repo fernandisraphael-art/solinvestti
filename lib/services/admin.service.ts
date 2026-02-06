@@ -20,6 +20,12 @@ async function directFetch<T>(table: string): Promise<T[]> {
     const url = import.meta.env.VITE_SUPABASE_URL;
     const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+    console.log('[directFetch] Environment check:', {
+        hasUrl: !!url,
+        hasAnonKey: !!anonKey,
+        urlPrefix: url?.substring(0, 20)
+    });
+
     // Try to get session token (only for logging, not used in fetch to avoid RLS issues on read)
     const { data: { session } } = await supabase.auth.getSession();
 
@@ -30,7 +36,11 @@ async function directFetch<T>(table: string): Promise<T[]> {
 
     // Updates are still authenticated.
     const endpoint = table.includes('?') ? table : `${table}?select=*`;
-    const response = await fetch(`${url}/rest/v1/${endpoint}`, {
+    const fullUrl = `${url}/rest/v1/${endpoint}`;
+
+    console.log('[directFetch] Fetching from:', fullUrl);
+
+    const response = await fetch(fullUrl, {
         headers: {
             'apikey': anonKey,
             'Authorization': `Bearer ${anonKey}`,
@@ -40,7 +50,11 @@ async function directFetch<T>(table: string): Promise<T[]> {
         }
     });
 
+    console.log('[directFetch] Response status:', response.status, response.statusText);
+
     if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[directFetch] Error response:', errorText);
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 

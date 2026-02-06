@@ -117,8 +117,16 @@ const App: React.FC = () => {
   const handleLogin = async (role: UserRole, name: string) => {
     setUser({ role, name });
     updateUserData({ name, isAlreadyRegistered: role === UserRole.CONSUMER });
-    // Fire and forget refresh to avoid blocking UI transition, FORCE it to bypass login page check
-    refreshData(true).catch(console.error);
+    // CRITICAL: Wait for data to load before navigation happens
+    // This prevents race condition where user navigates to marketplace before generators are loaded
+    console.log('[App] handleLogin - Waiting for data refresh...');
+    try {
+      await refreshData(true);
+      console.log('[App] handleLogin - Data refresh complete');
+    } catch (err) {
+      console.error('[App] handleLogin - Data refresh failed:', err);
+      // Continue anyway, the page will retry loading
+    }
   };
 
   const handleClientRegistration = async (password?: string) => {

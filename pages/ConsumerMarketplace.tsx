@@ -111,9 +111,17 @@ const ConsumerMarketplace: React.FC<ConsumerMarketplaceProps> = ({ userData, gen
 
   // Sync incoming userData to local state (fixes race condition if navigation happens before state update propagates)
   useEffect(() => {
-    if (userData.billValue && userData.billValue !== '0' && userData.billValue !== billValue) {
-      console.log('[Marketplace] Syncing billValue from props:', userData.billValue);
-      setBillValue(userData.billValue);
+    const incomingValue = userData.billValue;
+    console.log('[Marketplace] useEffect - userData.billValue:', incomingValue, 'current billValue:', billValue);
+
+    // Only update if incoming value is meaningful and different
+    if (incomingValue && incomingValue !== '0' && incomingValue !== billValue) {
+      console.log('[Marketplace] Syncing billValue from props:', incomingValue);
+      setBillValue(incomingValue);
+    }
+    // If billValue is still '0' and we have no incoming value, try to get from user profile
+    else if (billValue === '0' && (!incomingValue || incomingValue === '0')) {
+      console.log('[Marketplace] billValue is 0, keeping default or waiting for user input');
     }
   }, [userData.billValue]);
 
@@ -132,22 +140,33 @@ const ConsumerMarketplace: React.FC<ConsumerMarketplaceProps> = ({ userData, gen
     totalGenerators: generators.length,
     userState: userData.state,
     sampleGenRegion: generators[0]?.region,
+    sampleGenStatus: generators[0]?.status,
+    allGenerators: generators.map(g => ({ name: g.name, region: g.region, status: g.status })),
     systemError: error,
     isLoading
   });
 
   const rankedProviders = [...generators]
-    .filter(p => p.status === 'active')
+    .filter(p => {
+      // Accept both English and Portuguese status values
+      const isActive = p.status === 'active' || p.status === 'ativo';
+      console.log(`[Filter 1] ${p.name}: status=${p.status}, isActive=${isActive}`);
+      return isActive;
+    })
     .filter(p => {
       if (userData.state) {
         // Flexible matching: check if region contains the state (case-insensitive)
         const regionLower = (p.region || '').toLowerCase();
         const stateLower = userData.state.toLowerCase();
-        return regionLower.includes(stateLower) || stateLower.includes(regionLower);
+        const matches = regionLower.includes(stateLower) || stateLower.includes(regionLower);
+        console.log(`[Filter 2] ${p.name}: region="${p.region}", state="${userData.state}", matches=${matches}`);
+        return matches;
       }
       return true;
     })
     .sort((a, b) => b.discount - a.discount);
+
+  console.log('[Marketplace] Final rankedProviders:', rankedProviders.length, rankedProviders.map(p => p.name));
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans selection:bg-primary selection:text-white">
