@@ -125,6 +125,14 @@ const ConsumerMarketplace: React.FC<ConsumerMarketplaceProps> = ({ userData, gen
     }
   }, [userData.billValue]);
 
+  // CRITICAL FIX: Force refresh if generators are empty when marketplace loads
+  useEffect(() => {
+    if (generators.length === 0 && !isLoading) {
+      console.log('[Marketplace] No generators loaded, forcing refresh...');
+      refreshData(true);
+    }
+  }, []); // Only run once on mount
+
   const handleBillChange = (newValue: string) => {
     setBillValue(newValue);
     onSelect({ billValue: newValue });
