@@ -67,12 +67,14 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             isLoginPage,
             needsDataFetch,
             force,
-            willSkip: (isActualLandingPage || isLoginPage) && !needsDataFetch && !force
+            hasUser: !!user,
+            willSkip: (isActualLandingPage || isLoginPage) && !needsDataFetch && !force && !user
         });
 
-        // Skip only if on landing/login AND NOT on data-needing pages AND NOT forced
-        if ((isActualLandingPage || isLoginPage) && !needsDataFetch && !force) {
-            console.log('[SystemContext] On Landing/Login Page (and not forced), skipping data fetch immediately.');
+        // IMPORTANT: Always load data if user is authenticated (they need it for their dashboard)
+        // Skip only if on landing/login AND NOT on data-needing pages AND NOT forced AND NOT authenticated
+        if ((isActualLandingPage || isLoginPage) && !needsDataFetch && !force && !user) {
+            console.log('[SystemContext] On Landing/Login Page (and not forced, no user), skipping data fetch immediately.');
             setIsLoading(false);
             return;
         }
