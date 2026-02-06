@@ -1,35 +1,24 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-    // Only allow POST requests
-    if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method not allowed' });
+  // Only allow POST requests
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const { to, name, billValue } = req.body;
+
+    if (!to || !name) {
+      return res.status(400).json({ error: 'Missing required fields: to, name' });
     }
 
-    try {
-        const { to, name, billValue } = req.body;
+    // Initialize Resend with API key
+    const resend = new Resend(process.env.RESEND_API_KEY);
 
-        if (!to || !name) {
-            return res.status(400).json({ error: 'Missing required fields: to, name' });
-        }
-
-        // Configure Office 365 SMTP transporter
-        const transporter = nodemailer.createTransport({
-            host: 'smtp.office365.com',
-            port: 587,
-            secure: false, // Use TLS
-            auth: {
-                user: process.env.SMTP_USER || 'contato@solinvestti.com.br',
-                pass: process.env.SMTP_PASS || 'Solinvestti2026',
-            },
-            tls: {
-                ciphers: 'SSLv3',
-            },
-        });
-
-        // Email HTML template
-        const htmlContent = `
+    // Email HTML template
+    const htmlContent = `
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -135,22 +124,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 </html>
     `;
 
-        // Send email
-        const info = await transporter.sendMail({
-            from: `"Solinvestti" <${process.env.SMTP_USER || 'contato@solinvestti.com.br'}>`,
-            to,
-            subject: 'Bem-vindo à Solinvestti - Cadastro Aprovado! ✅',
-            html: htmlContent,
-        });
+    // Send email using Resend
+    const data = await resend.emails.send({
+      from: 'Solinvestti <onboarding@resend.dev>',
+      to: [to],
+      subject: 'Bem-vindo à Solinvestti - Cadastro Aprovado! ✅',
+      html: htmlContent,
+    });
 
-        console.log('Email sent:', info.messageId);
-        return res.status(200).json({ success: true, messageId: info.messageId });
+    console.log('Email sent via Resend:', data.id);
+    return res.status(200).json({ success: true, messageId: data.id });
 
-    } catch (error: any) {
-        console.error('Email sending error:', error);
-        return res.status(500).json({
-            error: 'Failed to send email',
-            details: error.message
-        });
-    }
+  } catch (error: any) {
+    console.error('Email sending error:', error);
+    return res.status(500).json({
+      error: 'Failed to send email',
+      details: error.message
+    });
+  }
 }
