@@ -167,7 +167,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, fixedRole }) => {
 
             try {
               const loginPromise = supabase.auth.signInWithPassword({ email: realEmail, password: realPassword });
-              const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout: Login demorou muito')), 45000));
+              const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout: Login demorou muito')), 60000));
               const { data, error } = await Promise.race([loginPromise, timeout]) as any;
 
               if (data?.session) {
@@ -207,7 +207,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, fixedRole }) => {
           email: loginEmail,
           password: formData.password,
         });
-        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Servidor demorou a responder.')), 15000));
+        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Servidor demorou a responder.')), 30000));
 
         const { data: authData, error: authError } = await Promise.race([loginPromise, timeout]) as any;
 

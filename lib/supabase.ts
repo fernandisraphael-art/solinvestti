@@ -7,16 +7,44 @@ if (!supabaseUrl || !supabaseAnonKey) {
     console.error('Supabase credentials missing! Check your .env.local file.');
 }
 
+// Custom fetch with retry logic and extended timeout
+const customFetch = async (url: RequestInfo | URL, options?: RequestInit, retries = 3): Promise<Response> => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
+    try {
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        return response;
+    } catch (error: any) {
+        clearTimeout(timeoutId);
+
+        // Retry logic for network errors
+        if (retries > 0 && (error.name === 'AbortError' || error.message?.includes('fetch'))) {
+            console.warn(`[Supabase] Fetch failed, retrying... (${retries} attempts left)`);
+            await new Promise(resolve => setTimeout(resolve, 1000 * (4 - retries))); // Exponential backoff
+            return customFetch(url, options, retries - 1);
+        }
+        throw error;
+    }
+};
+
 export const supabase = (supabaseUrl && supabaseAnonKey)
     ? createClient(supabaseUrl, supabaseAnonKey, {
         auth: {
             persistSession: true,
             autoRefreshToken: true,
+            detectSessionInUrl: true,
+            flowType: 'pkce',
         },
         global: {
             headers: {
                 'x-client-info': 'solinvestti-web'
             },
+            fetch: customFetch as any,
         },
         db: {
             schema: 'public'
