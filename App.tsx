@@ -335,7 +335,9 @@ const App: React.FC = () => {
                 }}
                 onUpdateGenerator={async (id, updates) => {
                   console.log('[App.tsx] onUpdateGenerator called for id:', id, updates);
-                  await AdminService.updateGenerator(id, updates);
+                  // Buscar status atual para detectar transição
+                  const currentGen = generators.find(g => g.id === id);
+                  await AdminService.updateGenerator(id, updates, currentGen?.status);
                   refreshData();
                 }}
                 onAddGenerator={async (gen) => { await AdminService.addGenerator(gen); refreshData(); }}
@@ -343,7 +345,12 @@ const App: React.FC = () => {
                 onActivateAll={async () => { await AdminService.activateAllGenerators(); refreshData(); }}
                 clients={clients}
                 onDeleteClient={async (id) => { await AdminService.deleteClient(id); refreshData(); }}
-                onUpdateClient={async (id, updates) => { await AdminService.updateClient(id, updates); refreshData(); }}
+                onUpdateClient={async (id, updates, emailOptions) => {
+                  // Buscar status atual para detectar transição
+                  const currentClient = clients.find(c => c.id === id);
+                  await AdminService.updateClient(id, updates, currentClient?.status, emailOptions);
+                  refreshData();
+                }}
                 onApproveClient={async (id) => {
                   const client = clients.find(c => c.id === id);
                   if (client) {
@@ -427,7 +434,8 @@ const App: React.FC = () => {
                       if (currentGen?.id) {
                         console.log('[App.tsx] Updating generator:', currentGen.id);
                         try {
-                          await AdminService.updateGenerator(currentGen.id, updates);
+                          // Buscar status atual para detectar transição
+                          await AdminService.updateGenerator(currentGen.id, updates, currentGen.status);
                           refreshData();
                           console.log('[App.tsx] Update initiated');
                         } catch (err) {

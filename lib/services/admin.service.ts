@@ -259,34 +259,6 @@ export const AdminService = {
         return [];
     },
 
-    async batchAddGenerators(generators: EnergyProvider[]) {
-        const dbData = generators.map(g => ({
-            name: g.name,
-            type: g.type,
-            region: g.region,
-            discount: g.discount,
-            rating: g.rating || 5,
-            estimated_savings: g.estimatedSavings || 0,
-            commission: g.commission,
-            status: g.status,
-            color: g.color,
-            icon: g.icon,
-            responsible_name: g.responsibleName,
-            responsible_phone: g.responsiblePhone,
-            annual_revenue: g.annualRevenue,
-            access_email: g.accessEmail,
-            access_password: g.accessPassword,
-            capacity: g.capacity,
-            city: g.city,
-            website: g.website,
-            company: g.company,
-            landline: g.landline
-        }));
-
-        const { error } = await supabase.from('generators').insert(dbData);
-        if (error) throw error;
-    },
-
     async fetchConcessionaires() {
         console.log('[AdminService.fetchConcessionaires] Starting fetch...');
 
@@ -392,8 +364,11 @@ export const AdminService = {
         if (error) throw error;
     },
 
-    async updateGenerator(id: string, updates: any) {
-        console.log('[AdminService.updateGenerator] Updating id:', id);
+    async updateGenerator(id: string, updates: any, previousStatus?: string) {
+        console.log('[AdminService.updateGenerator] Updating id:', id, 'updates:', updates);
+
+        // Regra: só envia email se status mudar de não-ativo para ativo
+        const isActivating = updates.status === 'active' && previousStatus !== 'active';
 
         const dbUpdates: any = {};
         if (updates.name !== undefined) dbUpdates.name = updates.name;
@@ -443,6 +418,11 @@ export const AdminService = {
                 }
 
                 console.log('[AdminService.updateGenerator] SDK success, affected rows:', count);
+
+                // Envia email se ativando
+                if (isActivating) {
+                    await this._sendGeneratorActivationEmail(id);
+                }
                 return;
             } catch (sdkErr: any) {
                 console.error('[AdminService.updateGenerator] SDK failed:', sdkErr?.message);
@@ -455,9 +435,50 @@ export const AdminService = {
             console.log('[AdminService.updateGenerator] Trying directUpdate fallback...');
             await directUpdate('generators', id, dbUpdates);
             console.log('[AdminService.updateGenerator] directUpdate success');
+
+            // Envia email se ativando
+            if (isActivating) {
+                await this._sendGeneratorActivationEmail(id);
+            }
         } catch (directErr: any) {
             console.error('[AdminService.updateGenerator] directUpdate failed:', directErr?.message);
             throw directErr;
+        }
+    },
+
+    // Helper interno para enviar email de ativação de usina
+    async _sendGeneratorActivationEmail(generatorId: string) {
+        try {
+            const generators = await this.fetchGenerators();
+            const generator = generators.find((g: any) => g.id === generatorId);
+
+            // Validar se email existe (accessEmail)
+            if (!generator?.accessEmail) {
+                console.warn('[AdminService] Usina sem email cadastrado, pulando envio:', generatorId);
+                return;
+            }
+
+            console.log('[AdminService] Enviando email de ativação para usina:', generator.accessEmail);
+
+            const response = await fetch('/api/send-email-graph', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    to: generator.accessEmail,
+                    type: 'generator',
+                    recipientName: generator.name
+                }),
+            });
+
+            if (response.ok) {
+                console.log('[AdminService] Email de ativação enviado com sucesso para:', generator.accessEmail);
+            } else {
+                const error = await response.json();
+                console.error('[AdminService] Falha ao enviar email:', error.details || error.message);
+            }
+        } catch (emailError: any) {
+            // Não falha o update se email falhar
+            console.error('[AdminService] Erro ao enviar email (não-bloqueante):', emailError.response?.data || emailError.message);
         }
     },
 
@@ -509,48 +530,21 @@ export const AdminService = {
         }
     },
 
-    async updateClient(id: string, updates: any) {
-        console.log('[AdminService.updateClient] Updating id:', id);
+    async updateClient(id: string, updates: any, previousStatus?: string, emailOptions?: { subject: string; body: string }) {
+        console.log('[AdminService.updateClient] Updating id:', id, 'updates:', updates);
+
+        // Regra: só envia email se status mudar de não-ativo para ativo/aprovado
+        const isActivating = (updates.status === 'approved' || updates.status === 'active') &&
+            previousStatus !== 'approved' && previousStatus !== 'active';
 
         // Use direct update first (more reliable)
         try {
             await directUpdate('clients', id, updates);
             console.log('[AdminService.updateClient] Direct update success');
 
-            // Send activation email if status changed to approved
-            if (updates.status === 'approved' || updates.status === 'active') {
-                try {
-                    // Fetch client data to get email and name
-                    const clients = await this.fetchClients();
-                    const client = clients.find(c => c.id === id);
-
-                    if (client && client.email) {
-                        console.log('[AdminService.updateClient] Sending activation email to:', client.email);
-
-                        // Call email API
-                        const response = await fetch('/api/send-email', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                to: client.email,
-                                name: client.name,
-                                billValue: client.bill_value || client.billValue
-                            }),
-                        });
-
-                        if (response.ok) {
-                            console.log('[AdminService.updateClient] Activation email sent successfully');
-                        } else {
-                            const error = await response.json();
-                            console.error('[AdminService.updateClient] Failed to send email:', error);
-                        }
-                    }
-                } catch (emailError: any) {
-                    // Don't fail the update if email fails
-                    console.error('[AdminService.updateClient] Email sending failed (non-blocking):', emailError.message);
-                }
+            // Envia email apenas se ativando (transição)
+            if (isActivating) {
+                await this._sendClientActivationEmail(id, emailOptions);
             }
 
             return;
@@ -563,38 +557,57 @@ export const AdminService = {
             const { error } = await supabase.from('clients').update(updates).eq('id', id);
             if (error) throw error;
 
-            // Send activation email if status changed to approved (SDK fallback)
-            if (updates.status === 'approved' || updates.status === 'active') {
-                try {
-                    const clients = await this.fetchClients();
-                    const client = clients.find(c => c.id === id);
-
-                    if (client && client.email) {
-                        console.log('[AdminService.updateClient] Sending activation email to:', client.email);
-
-                        const response = await fetch('/api/send-email', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                to: client.email,
-                                name: client.name,
-                                billValue: client.bill_value || client.billValue
-                            }),
-                        });
-
-                        if (response.ok) {
-                            console.log('[AdminService.updateClient] Activation email sent successfully');
-                        } else {
-                            const error = await response.json();
-                            console.error('[AdminService.updateClient] Failed to send email:', error);
-                        }
-                    }
-                } catch (emailError: any) {
-                    console.error('[AdminService.updateClient] Email sending failed (non-blocking):', emailError.message);
-                }
+            // Envia email apenas se ativando (transição)
+            if (isActivating) {
+                await this._sendClientActivationEmail(id, emailOptions);
             }
+        }
+    },
+
+    // Helper interno para enviar email de ativação de cliente
+    async _sendClientActivationEmail(clientId: string, emailOptions?: { subject: string; body: string }) {
+        try {
+            const clients = await this.fetchClients();
+            const client = clients.find((c: any) => c.id === clientId);
+
+            // Validar se email existe
+            if (!client?.email) {
+                console.warn('[AdminService] Cliente sem email cadastrado, pulando envio:', clientId);
+                return;
+            }
+
+            console.log('[AdminService] Enviando email de ativação para cliente:', client.email);
+
+            const response = await fetch('/api/send-email-graph', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    to: client.email,
+                    type: 'client',
+                    recipientName: client.name,
+                    // Custom email content (if provided)
+                    customSubject: emailOptions?.subject,
+                    customBody: emailOptions?.body
+                }),
+            });
+
+            // Handle 404 - API not available in local dev
+            if (response.status === 404) {
+                console.warn('[AdminService] API /api/send-email-graph não disponível (modo dev local). Email não enviado.');
+                throw new Error('API de email não disponível no modo dev local. Faça deploy para testar envio de emails.');
+            }
+
+            if (response.ok) {
+                console.log('[AdminService] Email de ativação enviado com sucesso para:', client.email);
+            } else {
+                const error = await response.json();
+                console.error('[AdminService] Falha ao enviar email:', error.details || error.message);
+                throw new Error(error.details || error.message || 'Falha ao enviar email');
+            }
+        } catch (emailError: any) {
+            // Re-throw to let UI know about the error
+            console.error('[AdminService] Erro ao enviar email:', emailError.message);
+            throw emailError;
         }
     },
 

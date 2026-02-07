@@ -1,9 +1,61 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { UserRole } from '../types';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+
+// Session-level cache for admin_secrets (avoids refetching on every login attempt)
+let adminSecretsCache: { login: string; password: string } | null = null;
+let cacheTimestamp = 0;
+const CACHE_TTL = 60000; // 1 minute cache
+
+// Helper to get cached or fresh admin secrets
+async function getAdminSecrets(): Promise<{ login: string; password: string }> {
+  const now = Date.now();
+
+  // Return cached if still valid
+  if (adminSecretsCache && (now - cacheTimestamp) < CACHE_TTL) {
+    console.log('[AuthPage] Using cached admin_secrets');
+    return adminSecretsCache;
+  }
+
+  // Default fallback
+  let login = localStorage.getItem('admin_custom_login') || 'admin';
+  let password = localStorage.getItem('admin_custom_password') || 'admin123';
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1000); // 1s timeout (fast fail)
+
+    const { data: secrets, error } = await supabase
+      .from('admin_secrets')
+      .select('*')
+      .abortSignal(controller.signal);
+
+    clearTimeout(timeoutId);
+
+    if (!error && secrets) {
+      const loginSecret = secrets.find((s: any) => s.secret_key === 'admin_login')?.secret_value;
+      const passSecret = secrets.find((s: any) => s.secret_key === 'admin_password')?.secret_value;
+      if (loginSecret) login = loginSecret;
+      if (passSecret) password = passSecret;
+      console.log('[AuthPage] Fetched admin_secrets from DB');
+    }
+  } catch (err: any) {
+    if (err.name !== 'AbortError') {
+      console.warn('[AuthPage] admin_secrets fetch failed (using fallback):', err.message);
+    } else {
+      console.warn('[AuthPage] admin_secrets fetch timeout (using fallback)');
+    }
+  }
+
+  // Cache the result
+  adminSecretsCache = { login, password };
+  cacheTimestamp = now;
+
+  return adminSecretsCache;
+}
 
 // Helper to check generator credentials via REST API (bypasses SDK issues)
 async function checkGeneratorCredentials(email: string, password: string): Promise<{ name: string; id: string } | null> {
@@ -94,7 +146,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, fixedRole }) => {
           setIsProcessing(false);
           setErrorMsg('A operação demorou muito. Por favor, tente novamente.');
         }
-      }, 15000); // 15 seconds max lock
+      }, 15000); // 15 seconds max lock (increased from 10s for slow networks)
     }
     return () => clearTimeout(safetyTimer);
   }, [isProcessing]);
@@ -137,24 +189,8 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, fixedRole }) => {
       if (isLoginMode) {
         // Real Admin Login Flow
         if (activeRole === UserRole.ADMIN) {
-          let dbLogin = localStorage.getItem('admin_custom_login') || 'admin';
-          let dbPass = localStorage.getItem('admin_custom_password') || 'admin123';
-
-          // Best-effort secret fetch
-          try {
-            const fetchPromise = supabase.from('admin_secrets').select('*');
-            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout DB')), 3000));
-            const { data: secrets } = await Promise.race([fetchPromise, timeoutPromise]) as any;
-
-            if (secrets) {
-              const loginSecret = secrets.find((s: any) => s.secret_key === 'admin_login')?.secret_value;
-              const passSecret = secrets.find((s: any) => s.secret_key === 'admin_password')?.secret_value;
-              if (loginSecret) dbLogin = loginSecret;
-              if (passSecret) dbPass = passSecret;
-            }
-          } catch (err) {
-            console.warn('Failed to fetch admin_secrets (using fallback):', err);
-          }
+          // Get admin credentials (cached, fast, non-blocking)
+          const { login: dbLogin, password: dbPass } = await getAdminSecrets();
 
           // Check custom/legacy match
           const isCustomMatch = formData.email.trim().toLowerCase() === dbLogin.trim().toLowerCase() && formData.password === dbPass;
@@ -167,7 +203,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, fixedRole }) => {
 
             try {
               const loginPromise = supabase.auth.signInWithPassword({ email: realEmail, password: realPassword });
-              const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout: Login demorou muito')), 45000));
+              const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout: Login demorou muito')), 5000)); // 5s timeout (reduced from 45s)
               const { data, error } = await Promise.race([loginPromise, timeout]) as any;
 
               if (data?.session) {
@@ -207,7 +243,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onLogin, fixedRole }) => {
           email: loginEmail,
           password: formData.password,
         });
-        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Servidor demorou a responder.')), 20000));
+        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Servidor demorou a responder.')), 8000)); // 8s timeout (reduced from 20s)
 
         const { data: authData, error: authError } = await Promise.race([loginPromise, timeout]) as any;
 

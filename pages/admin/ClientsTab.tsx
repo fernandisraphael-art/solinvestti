@@ -1,12 +1,29 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 
+// Default email template
+const DEFAULT_EMAIL_SUBJECT = 'Bem-vindo à Solinvestti - Sua conta foi ativada!';
+const DEFAULT_EMAIL_BODY = `Sua conta foi ativada com sucesso.
+
+Você já está na nossa lista de espera e, em breve, um de nossos especialistas entrará em contato para dar continuidade ao seu atendimento.
+
+Enquanto isso, conheça sua jornada para a construção do seu patrimônio com a economia de energia: https://l1nk.dev/SajNX`;
+
+// Helper to replace placeholders
+const replacePlaceholders = (text: string, client: any) => {
+    return text
+        .replace(/\{\{nome\}\}/g, client?.name || 'Cliente')
+        .replace(/\{\{email\}\}/g, client?.email || '')
+        .replace(/\{\{data\}\}/g, new Date().toLocaleDateString('pt-BR'))
+        .replace(/\{\{empresa\}\}/g, 'Solinvestti');
+};
+
 interface ClientsTabProps {
     clients: any[];
     onEditClient: (client: any) => void;
     onDeleteClient: (id: string) => void;
     onApproveClient: (id: string) => void;
-    onUpdateClient: (id: string, updates: any) => void;
+    onUpdateClient: (id: string, updates: any, emailOptions?: { subject: string; body: string }) => void;
     onActivateAll: () => void;
     onExportExcel: () => void;
     onExportPDF: () => void;
@@ -15,6 +32,14 @@ interface ClientsTabProps {
 const ClientsTab: React.FC<ClientsTabProps> = ({ clients, onEditClient, onDeleteClient, onApproveClient, onUpdateClient, onActivateAll, onExportExcel, onExportPDF }) => {
     const [viewingBill, setViewingBill] = useState<string | null>(null);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+
+    // Activation modal state
+    const [activatingClient, setActivatingClient] = useState<any | null>(null);
+    const [emailSubject, setEmailSubject] = useState(DEFAULT_EMAIL_SUBJECT);
+    const [emailBody, setEmailBody] = useState(DEFAULT_EMAIL_BODY);
+    const [isActivating, setIsActivating] = useState(false);
+    const [showPreview, setShowPreview] = useState(false);
+
 
     const getStatusStyle = (status: string) => {
         switch (status) {
@@ -177,16 +202,33 @@ const ClientsTab: React.FC<ClientsTabProps> = ({ clients, onEditClient, onDelete
 
                             {/* Toggle Status Button (Activate/Pause) */}
                             <button
-                                onClick={() => onUpdateClient(client.id, { status: client.status === 'active' || client.status === 'approved' ? 'pending_approval' : 'approved' })}
+                                onClick={() => {
+                                    const isActive = client.status === 'active' || client.status === 'approved';
+                                    if (isActive) {
+                                        // Pausar cliente diretamente
+                                        onUpdateClient(client.id, { status: 'pending_approval' });
+                                    } else {
+                                        // Abrir modal para ativação com email
+                                        setActivatingClient(client);
+                                        setEmailSubject(DEFAULT_EMAIL_SUBJECT);
+                                        setEmailBody(DEFAULT_EMAIL_BODY);
+                                        setShowPreview(false);
+                                    }
+                                }}
+                                disabled={isActivating && activatingClient?.id === client.id}
                                 className={`size-12 rounded-2xl flex items-center justify-center transition-all group/btn ${client.status === 'active' || client.status === 'approved'
                                     ? 'bg-amber-500/10 text-amber-500/60 hover:text-amber-500 hover:bg-amber-500/20'
                                     : 'bg-emerald-500/10 text-emerald-500/60 hover:text-emerald-500 hover:bg-emerald-500/20'
-                                    }`}
+                                    } ${isActivating && activatingClient?.id === client.id ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 title={client.status === 'active' || client.status === 'approved' ? 'Pausar Cliente' : 'Ativar Cliente'}
                             >
-                                <span className="material-symbols-outlined text-sm group-hover/btn:scale-110 transition-transform">
-                                    {client.status === 'active' || client.status === 'approved' ? 'pause_circle' : 'play_circle'}
-                                </span>
+                                {isActivating && activatingClient?.id === client.id ? (
+                                    <div className="size-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin"></div>
+                                ) : (
+                                    <span className="material-symbols-outlined text-sm group-hover/btn:scale-110 transition-transform">
+                                        {client.status === 'active' || client.status === 'approved' ? 'pause_circle' : 'play_circle'}
+                                    </span>
+                                )}
                             </button>
 
                             {/* Edit Button */}
@@ -339,6 +381,148 @@ const ClientsTab: React.FC<ClientsTabProps> = ({ clients, onEditClient, onDelete
                             })()}
                         </div>
 
+                    </div>
+                </div>
+            )}
+
+            {/* Activation Email Modal */}
+            {activatingClient && (
+                <div className="fixed inset-0 bg-brand-deep/90 backdrop-blur-xl z-[70] flex items-center justify-center p-6">
+                    <div className="bg-[#0F172A] border border-white/10 w-full max-w-2xl rounded-[2rem] p-8 shadow-2xl relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl -mr-32 -mt-32"></div>
+
+                        {/* Header */}
+                        <div className="flex justify-between items-start mb-8 relative z-10">
+                            <div>
+                                <h3 className="text-2xl font-display font-black text-white flex items-center gap-4">
+                                    <div className="size-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                                        <span className="material-symbols-outlined text-xl">mail</span>
+                                    </div>
+                                    Ativar Cliente
+                                </h3>
+                                <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mt-1 ml-14">
+                                    Enviar email de ativação para {activatingClient.name}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setActivatingClient(null)}
+                                disabled={isActivating}
+                                className="size-12 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all group disabled:opacity-50"
+                            >
+                                <span className="material-symbols-outlined group-hover:rotate-90 transition-transform">close</span>
+                            </button>
+                        </div>
+
+                        {/* Toggle Preview/Edit */}
+                        <div className="flex mb-6 gap-2">
+                            <button
+                                onClick={() => setShowPreview(false)}
+                                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${!showPreview ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white'}`}
+                            >
+                                Editar
+                            </button>
+                            <button
+                                onClick={() => setShowPreview(true)}
+                                className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${showPreview ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white'}`}
+                            >
+                                Preview
+                            </button>
+                        </div>
+
+                        {showPreview ? (
+                            /* Preview Mode */
+                            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-6 max-h-80 overflow-y-auto">
+                                <div className="mb-4 pb-4 border-b border-white/10">
+                                    <p className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-1">Assunto</p>
+                                    <p className="text-white font-bold">{replacePlaceholders(emailSubject, activatingClient)}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-2">Corpo do Email</p>
+                                    <p className="text-white/80 text-sm whitespace-pre-wrap leading-relaxed">
+                                        {replacePlaceholders(emailBody, activatingClient)}
+                                    </p>
+                                </div>
+                            </div>
+                        ) : (
+                            /* Edit Mode */
+                            <div className="space-y-4 mb-6">
+                                <div>
+                                    <label className="block text-[9px] font-black text-white/40 uppercase tracking-widest mb-2">Assunto</label>
+                                    <input
+                                        type="text"
+                                        value={emailSubject}
+                                        onChange={(e) => setEmailSubject(e.target.value)}
+                                        disabled={isActivating}
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/50 disabled:opacity-50"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[9px] font-black text-white/40 uppercase tracking-widest mb-2">
+                                        Corpo do Email <span className="text-white/20">(Placeholders: {'{{nome}}'}, {'{{email}}'}, {'{{data}}'})</span>
+                                    </label>
+                                    <textarea
+                                        value={emailBody}
+                                        onChange={(e) => setEmailBody(e.target.value)}
+                                        disabled={isActivating}
+                                        rows={8}
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/50 resize-none disabled:opacity-50"
+                                    />
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setEmailSubject(DEFAULT_EMAIL_SUBJECT);
+                                        setEmailBody(DEFAULT_EMAIL_BODY);
+                                    }}
+                                    disabled={isActivating}
+                                    className="text-[10px] font-bold uppercase tracking-widest text-white/40 hover:text-white transition-colors disabled:opacity-50"
+                                >
+                                    ↻ Restaurar Template Padrão
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-4">
+                            <button
+                                onClick={() => setActivatingClient(null)}
+                                disabled={isActivating}
+                                className="flex-1 py-4 bg-white/5 border border-white/10 rounded-2xl text-white/60 font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all disabled:opacity-50"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    setIsActivating(true);
+                                    try {
+                                        // Ativar cliente e enviar email com conteúdo customizado
+                                        await onUpdateClient(activatingClient.id, { status: 'approved' }, {
+                                            subject: replacePlaceholders(emailSubject, activatingClient),
+                                            body: replacePlaceholders(emailBody, activatingClient)
+                                        });
+                                        setActivatingClient(null);
+                                    } catch (err) {
+                                        console.error('Erro ao ativar cliente:', err);
+                                        alert('Erro ao ativar cliente. Tente novamente.');
+                                    } finally {
+                                        setIsActivating(false);
+                                    }
+                                }}
+                                disabled={isActivating}
+                                className="flex-1 py-4 bg-emerald-500 hover:bg-emerald-600 rounded-2xl text-white font-black text-[10px] uppercase tracking-widest shadow-xl shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                {isActivating ? (
+                                    <>
+                                        <div className="size-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                        Ativando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="material-symbols-outlined text-sm">send</span>
+                                        Ativar e Enviar Email
+                                    </>
+                                )}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

@@ -28,6 +28,7 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const [maintenanceMode, setMaintenanceMode] = useState(false);
     const isMountedRef = useRef(true);
     const retryCountRef = useRef(0);
+    const generatorsRef = useRef<EnergyProvider[]>([]); // Ref to avoid stale closure
 
     useEffect(() => {
         const stored = localStorage.getItem('solinvestti_maintenance');
@@ -97,7 +98,7 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             // Helper to retry fetch on AbortError
             const fetchWithRetry = async <T,>(
                 fetcher: () => Promise<T>,
-                maxRetries = 3
+                maxRetries = 1 // Reduced from 3 to prevent long delays
             ): Promise<T | null> => {
                 for (let i = 0; i < maxRetries; i++) {
                     try {
@@ -159,6 +160,9 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                 status: g.status // Removed force 'active' to respect DB reality
             })));
 
+            // Keep ref in sync for hashchange handler
+            generatorsRef.current = genData;
+
             setConcessionaires(concData || []);
             setClients((clientData || []).map(c => ({
                 ...c,
@@ -194,8 +198,8 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
             console.log('[SystemContext] Hash changed to:', hash, 'needsData:', needsDataOnPage, 'generators:', generators.length);
 
-            // If navigating to a data-needing page and generators are empty, force refresh
-            if (needsDataOnPage && generators.length === 0) {
+            // Use ref to get latest generators value (avoid stale closure)
+            if (needsDataOnPage && generatorsRef.current.length === 0) {
                 console.log('[SystemContext] Forcing refresh for page with empty generators');
                 refreshData(true);
             }
@@ -216,7 +220,7 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             clearTimeout(timeoutId);
             window.removeEventListener('hashchange', handleHashChange);
         };
-    }, [user]); // Only depend on user, not generators.length to avoid infinite loops
+    }, []); // FIXED: Empty deps to run only once on mount (not on every user change)
 
     return (
         <SystemContext.Provider value={{ generators, concessionaires, clients, isLoading, error, refreshData, maintenanceMode, toggleMaintenanceMode }}>

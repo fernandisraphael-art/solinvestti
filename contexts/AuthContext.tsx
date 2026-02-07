@@ -21,34 +21,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isMountedRef.current = true;
 
         const initAuth = async () => {
-            // Add delay to avoid race condition with Supabase SDK initialization
-            await new Promise(resolve => setTimeout(resolve, 50));
-
-            if (!isMountedRef.current) return;
-
-            // Set a timeout to ensure loading state completes even if SDK hangs
-            const timeout = setTimeout(() => {
-                console.warn('[AuthContext] Auth init timeout - setting loading to false');
+            // AGGRESSIVE: Set loading to false after just 500ms to ensure UI never hangs
+            const fastUnlock = setTimeout(() => {
+                console.log('[AuthContext] Fast unlock - UI ready');
                 if (isMountedRef.current) {
                     setIsLoading(false);
                 }
-            }, 3000); // 3 second timeout
+            }, 500);
 
             try {
                 const session = await AuthService.getSession();
-                clearTimeout(timeout);
+                clearTimeout(fastUnlock);
+
                 if (session && isMountedRef.current) {
                     const profile = await AuthService.fetchProfile(session.user.id);
                     setUser({ role: profile.role as UserRole, name: profile.name || 'Usuário' });
                 }
             } catch (err: any) {
-                clearTimeout(timeout);
-                // Silently ignore AbortError - it's a known SDK issue
+                clearTimeout(fastUnlock);
+                // Silently ignore AbortError
                 if (err?.name !== 'AbortError' && !err?.message?.includes('AbortError')) {
                     console.error('Auth Init Error:', err);
                 }
             } finally {
-                clearTimeout(timeout);
                 if (isMountedRef.current) {
                     setIsLoading(false);
                 }
