@@ -160,10 +160,12 @@ const GeneratorSignup: React.FC<GeneratorSignupProps> = ({ onComplete }) => {
       };
 
       let insertError: any = null;
+      let newGeneratorId: string | null = null;
 
       // Tentativa 1: SDK
       try {
-        const { error } = await supabase.from('generators').insert(generatorPayload);
+        const { data: genDataSDK, error } = await supabase.from('generators').insert(generatorPayload).select('id').single();
+        if (genDataSDK) newGeneratorId = genDataSDK.id;
         if (error) insertError = error;
       } catch (err: any) {
         insertError = err;
@@ -202,6 +204,12 @@ const GeneratorSignup: React.FC<GeneratorSignupProps> = ({ onComplete }) => {
 
           // Sucesso no fallback! Limpar erro
           console.log('✅ Fallback insert via fetch funcionou!');
+
+          try {
+            const fallbackData = await res.json();
+            if (fallbackData && fallbackData.length > 0) newGeneratorId = fallbackData[0].id;
+          } catch (e) { console.warn('Could not parse fallback response for ID', e); }
+
           insertError = null;
 
         } catch (fallbackErr: any) {
@@ -220,14 +228,27 @@ const GeneratorSignup: React.FC<GeneratorSignupProps> = ({ onComplete }) => {
         console.log('⚠️ Duplicata detectada (ignorado).');
       }
 
-      // 4. Trigger Email Notification via Edge Function (FAIL-SAFE)
+      // 4. Send Admin Notification (Non-blocking)
       try {
-        console.log('📧 Tentando enviar e-mail...');
-        await supabase.functions.invoke('send-registration-email', {
-          body: { generator: formData }
-        }).catch(() => {
-          console.log('⚠️ Edge function não disponível, ignorando...');
-        });
+        console.log('📧 Tentando enviar notificação admin...');
+        await fetch('/api/send-email-graph', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'admin_notification',
+            signupData: {
+              type: 'geradora',
+              name: formData.socialName, // Razão Social como nome principal
+              email: formData.email,
+              phone: formData.contactPhone,
+              city: formData.locationCity,
+              state: formData.locationState,
+              id: newGeneratorId || 'unknown-id',
+              created_at: new Date().toISOString()
+            }
+          })
+        }).catch(err => console.error('[GeneratorSignup] Failed to send admin notification:', err));
+
       } catch (emailErr) {
         console.error('⚠️ Falha de conexão ao tentar disparar e-mail:', emailErr);
       }

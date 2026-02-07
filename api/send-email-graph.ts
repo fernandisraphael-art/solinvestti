@@ -221,6 +221,86 @@ function getGeneratorActivationTemplate(generatorName: string): { subject: strin
     };
 }
 
+// Template: Notificação Admin
+function getAdminNotificationTemplate(data: any): { subject: string; html: string } {
+    const adminLink = `https://solinvestti.vercel.app/#/admin`; // Link fixo para produção conforme solicitado
+    const typeLabel = data.type === 'geradora' ? 'Geradora' :
+        data.type === 'empresa' ? 'Empresa' : 'Residencial';
+
+    const color = data.type === 'geradora' ? '#f59e0b' : '#3b82f6'; // Amarelo ou Azul
+
+    return {
+        subject: `Novo cadastro no Solinvestti — ${typeLabel} — ${data.name}`,
+        html: `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background-color: #f8fafc;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f8fafc; padding: 40px 20px;">
+        <tr>
+            <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 24px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.1);">
+                    <!-- Header -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); padding: 30px; text-align: center;">
+                            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 800;">NOVO CADASTRO</h1>
+                            <p style="margin: 8px 0 0; color: ${color}; font-size: 14px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;">${typeLabel}</p>
+                        </td>
+                    </tr>
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 40px;">
+                            <table width="100%" cellpadding="0" cellspacing="0">
+                                <tr>
+                                    <td style="padding-bottom: 20px; border-bottom: 1px solid #e2e8f0;">
+                                        <p style="margin: 0 0 5px; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Nome</p>
+                                        <p style="margin: 0; color: #0f172a; font-size: 16px; font-weight: 600;">${data.name}</p>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 20px 0; border-bottom: 1px solid #e2e8f0;">
+                                        <p style="margin: 0 0 5px; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Email</p>
+                                        <p style="margin: 0; color: #0f172a; font-size: 16px;">${data.email}</p>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 20px 0; border-bottom: 1px solid #e2e8f0;">
+                                        <p style="margin: 0 0 5px; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Telefone</p>
+                                        <p style="margin: 0; color: #0f172a; font-size: 16px;">${data.phone || 'Não informado'}</p>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 20px 0; border-bottom: 1px solid #e2e8f0;">
+                                        <p style="margin: 0 0 5px; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Localização</p>
+                                        <p style="margin: 0; color: #0f172a; font-size: 16px;">${data.city || '-'} / ${data.state || '-'}</p>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 20px 0;">
+                                        <p style="margin: 0 0 5px; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Detalhes do Sistema</p>
+                                        <p style="margin: 0; color: #64748b; font-size: 13px; font-family: monospace;">ID: ${data.id}</p>
+                                        <p style="margin: 5px 0 0; color: #64748b; font-size: 13px;">Data: ${new Date().toLocaleString('pt-BR')}</p>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <div style="text-align: center; margin-top: 30px;">
+                                <a href="${adminLink}" style="display: inline-block; background: #0f172a; color: white; text-decoration: none; padding: 16px 30px; border-radius: 12px; font-weight: 700; font-size: 14px;">ACESSAR PAINEL ADMIN</a>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>`
+    };
+}
+
 // Handler principal
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Apenas POST
@@ -229,26 +309,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     try {
-        const { to, type, recipientName, customSubject, customBody } = req.body;
+        const { to, type, recipientName, customSubject, customBody, signupData } = req.body;
 
-        // Validação de parâmetros
-        if (!to) {
-            return res.status(400).json({ error: 'Missing required field: to' });
+        // Validação de tipo
+        if (!type || !['client', 'generator', 'admin_notification'].includes(type)) {
+            return res.status(400).json({ error: 'Missing or invalid field: type' });
         }
 
-        if (!type || !['client', 'generator'].includes(type)) {
-            return res.status(400).json({ error: 'Missing or invalid field: type (must be "client" or "generator")' });
-        }
-
-        // Seleciona template baseado no tipo ou usa conteúdo customizado
+        // Seleciona template
         let emailTemplate: { subject: string; html: string };
+        let finalTo = to;
 
-        if (customSubject && customBody) {
-            // Use custom content provided by admin
-            console.log('[send-email-graph] Using custom email content');
-            emailTemplate = {
-                subject: customSubject,
-                html: `
+        if (type === 'admin_notification') {
+            // Segurança: Forçar envio para o email do admin (configurado no ENV ou fixo)
+            const adminEmail = process.env.EMAIL_FROM || 'contato@solinvestti.com.br';
+            finalTo = adminEmail;
+
+            if (!signupData) {
+                return res.status(400).json({ error: 'Missing signupData for admin notification' });
+            }
+            emailTemplate = getAdminNotificationTemplate(signupData);
+        } else {
+            // Fluxos normais (cliente/geradora) exigem 'to'
+            if (!to) {
+                return res.status(400).json({ error: 'Missing required field: to' });
+            }
+
+            if (customSubject && customBody) {
+                // ... (custom content logic)
+                console.log('[send-email-graph] Using custom email content');
+                emailTemplate = {
+                    subject: customSubject,
+                    html: `
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -282,16 +374,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     </table>
 </body>
 </html>`
-            };
-        } else if (type === 'client') {
-            emailTemplate = getClientActivationTemplate(recipientName || 'Cliente');
-        } else {
-            emailTemplate = getGeneratorActivationTemplate(recipientName || 'Usina');
+                };
+            } else if (type === 'client') {
+                emailTemplate = getClientActivationTemplate(recipientName || 'Cliente');
+            } else {
+                emailTemplate = getGeneratorActivationTemplate(recipientName || 'Usina');
+            }
         }
 
         // Envia email
         await sendEmailViaGraph({
-            to,
+            to: finalTo,
             subject: emailTemplate.subject,
             html: emailTemplate.html
         });

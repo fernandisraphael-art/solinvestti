@@ -203,8 +203,14 @@ const App: React.FC = () => {
 
       // Try SDK first, fallback to direct fetch if AbortError
       let insertSuccess = false;
+      let newClientId: string | null = null;
       try {
-        const { error: dbError } = await supabase.from('clients').insert(clientData);
+        // Try SDK first
+
+        const { data: insertedData, error: dbError } = await supabase.from('clients').insert(clientData).select('id').single();
+        if (insertedData) {
+          newClientId = insertedData.id;
+        }
 
         if (dbError) {
           // Check if it's an AbortError
@@ -233,7 +239,7 @@ const App: React.FC = () => {
               'apikey': key,
               'Authorization': `Bearer ${key}`,
               'Content-Type': 'application/json',
-              'Prefer': 'return=minimal'
+              'Prefer': 'return=representation'
             },
             body: JSON.stringify(clientData)
           });
@@ -242,6 +248,15 @@ const App: React.FC = () => {
             const errorText = await response.text();
             throw new Error(`Erro ao salvar cadastro: ${response.status} - ${errorText}`);
           }
+
+          try {
+            // Try to get ID from response
+            const resData = await response.json();
+            if (resData && resData.length > 0) {
+              newClientId = resData[0].id;
+            }
+          } catch (e) { console.warn('Could not parse fallback response for ID', e); }
+
           insertSuccess = true;
           console.log('✅ Client inserted via direct API fallback');
         } else {
@@ -251,6 +266,32 @@ const App: React.FC = () => {
 
       if (!insertSuccess) {
         throw new Error('Falha ao salvar cadastro. Por favor, tente novamente.');
+      }
+
+      // 4. Send Admin Notification (Non-blocking)
+      try {
+        if (insertSuccess) {
+          console.log('[App] Sending admin notification...');
+          fetch('/api/send-email-graph', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'admin_notification',
+              signupData: {
+                type: 'residencial', // Generic for client flow
+                name: userData.name,
+                email: userData.email,
+                phone: userData.phone,
+                city: userData.city,
+                state: userData.state,
+                id: newClientId || 'unknown-id',
+                created_at: new Date().toISOString()
+              }
+            })
+          }).catch(err => console.error('[App] Failed to send admin notification:', err));
+        }
+      } catch (notifyErr) {
+        console.error('[App] Notification error (ignored):', notifyErr);
       }
 
       // Refresh global state so admin sees the new client immediately
