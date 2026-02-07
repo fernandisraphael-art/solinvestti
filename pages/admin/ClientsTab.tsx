@@ -7,7 +7,7 @@ const DEFAULT_EMAIL_BODY = `Sua conta foi ativada com sucesso.
 
 Você já está na nossa lista de espera e, em breve, um de nossos especialistas entrará em contato para dar continuidade ao seu atendimento.
 
-Enquanto isso, conheça sua jornada para a construção do seu patrimônio com a economia de energia: https://l1nk.dev/SajNX`;
+Enquanto isso, conheça sua jornada para a construção do seu patrimônio com a economia de energia acessando nosso site e vendo as dúvidas mais comuns: https://solinvestti.vercel.app/#/duvidas-frequentes`;
 
 // Helper to replace placeholders
 const replacePlaceholders = (text: string, client: any) => {

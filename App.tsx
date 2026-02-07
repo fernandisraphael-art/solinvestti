@@ -14,6 +14,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import AuthPage from './pages/AuthPage';
 import GeneratorSignup from './pages/GeneratorSignup';
 import ConsumerDashboard from './pages/ConsumerDashboard';
+import FAQPage from './pages/FAQPage';
 
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SystemProvider, useSystem } from './contexts/SystemContext';
@@ -299,6 +300,7 @@ const App: React.FC = () => {
         <AdminControls />
         <Routes>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/duvidas-frequentes" element={<FAQPage />} />
 
           <Route path="/admin-login" element={<AuthPage onLogin={handleLogin} fixedRole={UserRole.ADMIN} />} />
           <Route path="/auth" element={<AuthPage onLogin={handleLogin} />} />
