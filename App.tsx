@@ -467,15 +467,26 @@ const App: React.FC = () => {
                 }));
 
                 const pendingNegotiations = genClients.filter(c =>
-                  c.status !== 'active' && c.status !== 'approved'
-                ).map(c => ({
-                  id: c.id,
-                  name: c.name,
-                  status: c.status === 'pending_approval' ? 'Análise de Crédito' : 'Aguardando Documentação',
-                  billValue: c.bill_value || c.billValue || 0,
-                  date: new Date(c.created_at || Date.now()).toLocaleDateString('pt-BR'),
-                  billUrl: c.bill_url || c.billUrl
-                }));
+                  // Captura qualquer status que não seja ativo/aprovado, incluindo explicitamente EM_NEGOCIACAO
+                  c.status !== 'active' &&
+                  c.status !== 'approved'
+                ).map(c => {
+                  let displayStatus = 'Aguardando Documentação';
+
+                  // Mapeamento explícito de status
+                  if (c.status === 'pending_approval' || c.status === 'pending') displayStatus = 'Análise de Crédito';
+                  else if (c.status === 'in_negotiation' || c.status === 'em_negociacao') displayStatus = 'Em Negociação';
+                  else if (c.status === 'waiting_signatures' || c.status === 'aguardando_assinatura') displayStatus = 'Aguardando Assinatura';
+
+                  return {
+                    id: c.id,
+                    name: c.name,
+                    status: displayStatus,
+                    billValue: c.bill_value || c.billValue || 0,
+                    date: new Date(c.created_at || Date.now()).toLocaleDateString('pt-BR'),
+                    billUrl: c.bill_url || c.billUrl
+                  };
+                });
 
                 return (
                   <GeneratorDashboard
