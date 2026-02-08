@@ -456,11 +456,11 @@ const App: React.FC = () => {
                 );
 
                 const activeClients = genClients.filter(c =>
-                  c.status === 'active' || c.status === 'approved'
+                  c.status === 'active' || c.status === 'approved' || c.status === 'pending_approval'
                 ).map(c => ({
                   id: c.id,
                   name: c.name,
-                  status: 'Ativo',
+                  status: (c.status === 'active' || c.status === 'approved') ? 'Ativo' : 'Em Negociação',
                   billValue: c.bill_value || c.billValue || 0,
                   date: new Date(c.created_at || Date.now()).toLocaleDateString('pt-BR'),
                   billUrl: c.bill_url || c.billUrl

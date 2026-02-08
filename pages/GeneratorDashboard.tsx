@@ -662,7 +662,12 @@ const GeneratorDashboard: React.FC<GeneratorDashboardProps> = ({ generatorData, 
                         <tr key={client.id} className="hover:bg-slate-50/50 transition-colors">
                           <td className="px-10 py-6 font-bold text-brand-navy">{client.name}</td>
                           <td className="px-10 py-6">
-                            <span className="px-3 py-1 bg-green-100 text-green-700 text-[9px] font-black uppercase rounded-full">{client.status}</span>
+                            <span className={`px-3 py-1 text-[9px] font-black uppercase rounded-full ${client.status === 'Ativo'
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-yellow-100 text-yellow-700'
+                              }`}>
+                              {client.status}
+                            </span>
                           </td>
                           <td className="px-10 py-6 font-display font-extrabold text-brand-navy">R$ {Number(client.billValue).toLocaleString('pt-BR')}</td>
                           <td className="px-10 py-6 text-xs text-brand-slate">{client.date}</td>
