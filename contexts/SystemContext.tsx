@@ -14,6 +14,10 @@ interface SystemContextType {
     refreshData: (force?: boolean) => Promise<void>;
     maintenanceMode: boolean;
     toggleMaintenanceMode: () => void;
+    updateLocalClient: (id: string, updates: any) => void;
+    deleteLocalClient: (id: string) => void;
+    updateLocalGenerator: (id: string, updates: any) => void;
+    deleteLocalGenerator: (id: string) => void;
 }
 
 const SystemContext = createContext<SystemContextType | undefined>(undefined);
@@ -222,8 +226,38 @@ export const SystemProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         };
     }, []); // FIXED: Empty deps to run only once on mount (not on every user change)
 
+    // Optimistic helpers
+    const updateLocalClient = (id: string, updates: any) => {
+        setClients(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
+    };
+
+    const deleteLocalClient = (id: string) => {
+        setClients(prev => prev.filter(c => c.id !== id));
+    };
+
+    const updateLocalGenerator = (id: string, updates: any) => {
+        setGenerators(prev => prev.map(g => g.id === id ? { ...g, ...updates } : g));
+    };
+
+    const deleteLocalGenerator = (id: string) => {
+        setGenerators(prev => prev.filter(g => g.id !== id));
+    };
+
     return (
-        <SystemContext.Provider value={{ generators, concessionaires, clients, isLoading, error, refreshData, maintenanceMode, toggleMaintenanceMode }}>
+        <SystemContext.Provider value={{
+            generators,
+            concessionaires,
+            clients,
+            isLoading,
+            error,
+            refreshData,
+            maintenanceMode,
+            toggleMaintenanceMode,
+            updateLocalClient,
+            deleteLocalClient,
+            updateLocalGenerator,
+            deleteLocalGenerator
+        }}>
             {children}
         </SystemContext.Provider>
     );

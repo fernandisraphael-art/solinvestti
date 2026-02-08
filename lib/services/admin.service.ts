@@ -262,22 +262,23 @@ export const AdminService = {
     async fetchConcessionaires() {
         console.log('[AdminService.fetchConcessionaires] Starting fetch...');
 
-        // Use direct fetch first (more reliable)
-        try {
-            console.log('[AdminService.fetchConcessionaires] Using direct fetch...');
-            // Forces SDK Fallback because RLS for Anon returns empty, bypassing authentication
-            throw new Error('Skipping DirectFetch due to RLS blocks');
+        const { data: { session } } = await supabase.auth.getSession();
 
-            // const data = await directFetch<any>('concessionaires');
-            // return data || [];
-        } catch (fetchErr: any) {
-            console.warn('[AdminService.fetchConcessionaires] Direct fetch skipped/failed, using SDK:', fetchErr?.message);
+        // Use direct fetch only for unauthenticated users (Generators)
+        if (!session) {
+            try {
+                console.log('[AdminService.fetchConcessionaires] Using direct fetch (Anon)...');
+                const data = await directFetch<any>('concessionaires');
+                if (data) return data;
+            } catch (fetchErr: any) {
+                console.warn('[AdminService.fetchConcessionaires] Direct fetch skipped/failed, using SDK:', fetchErr?.message);
+            }
         }
 
-        // Fallback: Try SDK
+        // Fallback: Try SDK (Authenticated)
         if (supabase) {
             try {
-                console.log('[AdminService.fetchConcessionaires] Trying SDK fallback...');
+                console.log('[AdminService.fetchConcessionaires] Trying SDK fallback (Authenticated)...');
                 const { data, error } = await supabase.from('concessionaires').select('*');
                 if (!error && data) {
                     console.log('[AdminService.fetchConcessionaires] SDK success, count:', data.length);
@@ -298,22 +299,33 @@ export const AdminService = {
     async fetchClients() {
         console.log('[AdminService.fetchClients] Starting fetch...');
 
-        // Use direct fetch first (more reliable)
-        try {
-            console.log('[AdminService.fetchClients] Using direct fetch...');
-            // Forces SDK Fallback because RLS for Anon returns empty, bypassing authentication
-            throw new Error('Skipping DirectFetch due to RLS blocks');
+        const { data: { session } } = await supabase.auth.getSession();
 
-            // const data = await directFetch<any>('clients');
-            // ... (rest of mapping code)
-        } catch (fetchErr: any) {
-            console.warn('[AdminService.fetchClients] Direct fetch skipped/failed, using SDK:', fetchErr?.message);
+        // Use direct fetch only for unauthenticated users (Generators) who need data but RLS/SDK might be finicky
+        // Admins (Authenticated) should use SDK below to get joins (generator name)
+        if (!session) {
+            try {
+                console.log('[AdminService.fetchClients] Using direct fetch (Anon)...');
+                const data = await directFetch<any>('clients');
+
+                if (data && data.length > 0) {
+                    console.log('[AdminService.fetchClients] Direct fetch success, count:', data.length);
+                    // Initialize generatorName as empty since we don't have the join
+                    // For Generators, they don't see this field anyway.
+                    return data.map((c: any) => ({
+                        ...c,
+                        generatorName: 'Carregando...'
+                    }));
+                }
+            } catch (fetchErr: any) {
+                console.warn('[AdminService.fetchClients] Direct fetch skipped/failed, using SDK:', fetchErr?.message);
+            }
         }
 
-        // Fallback: Try SDK
+        // Fallback: Try SDK (Primary for Admins)
         if (supabase) {
             try {
-                console.log('[AdminService.fetchClients] Trying SDK fallback...');
+                console.log('[AdminService.fetchClients] Trying SDK fallback (Authenticated)...');
                 const { data, error } = await supabase
                     .from('clients')
                     .select('*, generators(name)');

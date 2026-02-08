@@ -93,7 +93,7 @@ async function uploadFile(fileBase64: string, path: string) {
 
 const App: React.FC = () => {
   const { user, setUser, isLoading } = useAuth();
-  const { generators, concessionaires, clients, refreshData } = useSystem();
+  const { generators, concessionaires, clients, refreshData, updateLocalClient, deleteLocalClient, updateLocalGenerator, deleteLocalGenerator } = useSystem();
 
   // Debug: Track when generators change
   console.log('[App] Rendering with generators:', generators.length, 'clients:', clients.length);
@@ -368,42 +368,67 @@ const App: React.FC = () => {
                 generators={generators}
                 onToggleStatus={async (id, status) => {
                   const newStatus = status === 'active' ? 'pending' : 'active';
+                  // Optimistic
+                  updateLocalGenerator(id, { status: newStatus });
+                  // Background
                   await AdminService.toggleGeneratorStatus(id, newStatus);
-                  refreshData();
                 }}
                 onDeleteGenerator={async (id) => {
                   console.log('[App.tsx] onDeleteGenerator called for id:', id);
+                  // Optimistic
+                  deleteLocalGenerator(id);
+                  // Background
                   await AdminService.deleteGenerator(id);
-                  refreshData();
                 }}
                 onUpdateGenerator={async (id, updates) => {
                   console.log('[App.tsx] onUpdateGenerator called for id:', id, updates);
-                  // Buscar status atual para detectar transição
+                  // Optimistic
+                  updateLocalGenerator(id, updates);
+
+                  // Background
                   const currentGen = generators.find(g => g.id === id);
                   await AdminService.updateGenerator(id, updates, currentGen?.status);
-                  refreshData();
                 }}
                 onAddGenerator={async (gen) => { await AdminService.addGenerator(gen); refreshData(); }}
                 onBatchAddGenerators={async (batch) => { await AdminService.batchAddGenerators(batch); refreshData(); }}
-                onActivateAll={async () => { await AdminService.activateAllGenerators(); refreshData(); }}
+                onActivateAll={async () => {
+                  // Optimistic
+                  generators.forEach(g => updateLocalGenerator(g.id, { status: 'active' }));
+                  await AdminService.activateAllGenerators();
+                  // refreshData(); // Still good to sync eventually, but maybe not block
+                }}
                 clients={clients}
-                onDeleteClient={async (id) => { await AdminService.deleteClient(id); refreshData(); }}
+                onDeleteClient={async (id) => {
+                  console.log('[App.tsx] onDeleteClient called for id:', id);
+                  // Optimistic update
+                  deleteLocalClient(id);
+                  // Background update
+                  await AdminService.deleteClient(id);
+                }}
                 onUpdateClient={async (id, updates, emailOptions) => {
-                  // Buscar status atual para detectar transição
+                  // Optimistic update
+                  updateLocalClient(id, updates);
+
+                  // Background update
                   const currentClient = clients.find(c => c.id === id);
                   await AdminService.updateClient(id, updates, currentClient?.status, emailOptions);
-                  refreshData();
                 }}
                 onApproveClient={async (id) => {
                   const client = clients.find(c => c.id === id);
                   if (client) {
+                    // Optimistic update
+                    updateLocalClient(id, { status: 'approved' });
+                    // Background update
                     await AdminService.approveClient(client);
-                    refreshData();
                   }
                 }}
                 onActivateAllClients={async () => {
+                  // Optimistic update for all pending clients
+                  const pendingClients = clients.filter(c => c.status === 'pending_approval');
+                  pendingClients.forEach(c => updateLocalClient(c.id, { status: 'approved' }));
+
+                  // Background update
                   await AdminService.activateAllClients();
-                  refreshData();
                 }}
                 concessionaires={concessionaires}
                 onAddConcessionaire={async (data) => { await AdminService.addConcessionaire(data); refreshData(); }}
